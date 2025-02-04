@@ -1,0 +1,30 @@
+{
+  "ModId": "p5r.enhance.cbt.reloaded",
+  "ModName": "P5R Custom Bonus Tweaks (Reloaded)",
+  "ModAuthor": "DeathChaos",
+  "ModVersion": "1.0.0",
+  "ModDescription": "Reloaded-II Remake of the Custom Bonus Tweaks Mod",
+  "ModDll": "p5r.enhance.cbt.reloaded.dll",
+  "ModIcon": "Preview.png",
+  "ModR2RManagedDll32": "x86/p5r.enhance.cbt.reloaded.dll",
+  "ModR2RManagedDll64": "x64/p5r.enhance.cbt.reloaded.dll",
+  "ModNativeDll32": "",
+  "ModNativeDll64": "",
+  "IsLibrary": false,
+  "ReleaseMetadataFileName": "p5r.enhance.cbt.reloaded.ReleaseMetadata.json",
+  "PluginData": {},
+  "IsUniversalMod": false,
+  "ModDependencies": [
+    "Reloaded.Memory.SigScan.ReloadedII",
+    "reloaded.sharedlib.hooks",
+    "p5rpc.flowscriptframework",
+    "crifs.v2.hook",
+    "BGME.Framework",
+    "BGME.Framework.API",
+    "P5R.CostumeFramework",
+    "p5rpc.modloader"
+  ],
+  "OptionalDependencies": [ ],
+  "SupportedAppId": [ "p5r.exe" ],
+  "ProjectUrl": ""
+}
