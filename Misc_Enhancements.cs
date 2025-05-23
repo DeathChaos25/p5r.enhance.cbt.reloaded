@@ -243,6 +243,15 @@ namespace p5r.enhance.cbt.reloaded
                 memory.SafeWrite((nuint)address + 0x15, Bytes);
             });
 
+            // v1.0.0 = 0x140ea3e15
+            SigScan("E8 ?? ?? ?? ?? 84 C0 74 ?? C7 87 ?? ?? ?? ?? 01 00 00 00 B9 8A 00 00 00", "quick_evt_skip_enable_Sig", address =>
+            {
+                if (_configuration._020_QuickEventSkip)
+                {
+                    WriteReturn1(address);
+                }
+            });
+
 
             // v1.0.0 = 0x140de801d
             SigScan("49 81 FA 40 0C 01 00", "PersonaVisualTBLALimit_Sig", address =>
@@ -341,12 +350,12 @@ namespace p5r.enhance.cbt.reloaded
                 return FlowStatus.SUCCESS;
             }, 0x00D6);
 
-            flowFramework.Register("AI_SET_TACTICS", 1, () =>
+            /*flowFramework.Register("AI_SET_TACTICS", 1, () =>
             {
                 // ToDo
 
                 return FlowStatus.SUCCESS;
-            }, 0x010e);
+            }, 0x010e);*/
 
             flowFramework.Register("FLAG_DATA_INPUT", 3, () =>
             {
@@ -436,8 +445,6 @@ namespace p5r.enhance.cbt.reloaded
 
             int result = _hook_calendar_trans_play_knife_sfx.OriginalFunction(a1);
 
-            Log($"Calendar Anounce State is {a1->announceState}");
-
             if (a1->announceState == 2)
             {
                 isDayAnnounced = false;
@@ -451,21 +458,14 @@ namespace p5r.enhance.cbt.reloaded
                 else
                 {
                     int[] dayMapping = { 4, 5, 6, 0, 1, 2, 3 };
-
                     int Variation = _gameFunctions.RandomIntBetween(0, 1);
-
                     int DayOfWeek = _gameFunctions.GetTotalDays() % 7;
-
                     int mappedDayOfWeek = dayMapping[DayOfWeek];
-
                     int DayCue = 120 + Variation + (mappedDayOfWeek * 2);
-
                     _gameFunctions.playSingleWordCue(DayCue);
                 }
-
                 isDayAnnounced = true;
             }
-
             return result;
         }
 
@@ -501,6 +501,7 @@ namespace p5r.enhance.cbt.reloaded
         public static unsafe nint LoadResourceImpl(
             ushort type, byte a2, ushort index, ushort major, byte minor, byte sub, short a7, int a8, ushort a9, short a10)
         {
+            // Log($"LoadResourceImpl: type {type}, a2 {a2}, index {index}, major {major}, minor {minor}, sub {sub}, a7 {a7}, a8 {a8}, a9 {a9}, a10 {a10}");
             if (type == 2 || type == 5)
             {
                 if (major >= MIN_CHAR_ID && major <= MAX_CHAR_ID)
@@ -650,24 +651,6 @@ namespace p5r.enhance.cbt.reloaded
         static int CombineBytes(byte R, byte G, byte B)
         {
             return (R << 24) | (G << 16) | (B << 8) | 255;
-        }
-
-        private static void sprintf(char* buffer, string format, params object[] args)
-        {
-            string formatted = string.Format(format, args);
-            fixed (char* formattedPtr = formatted)
-            {
-                CopyString(buffer, formattedPtr);
-            }
-        }
-
-        private static void CopyString(char* dest, char* src)
-        {
-            while (*src != '\0')
-            {
-                *dest++ = *src++;
-            }
-            *dest = '\0'; // Null-terminate the destination string
         }
     }
 }

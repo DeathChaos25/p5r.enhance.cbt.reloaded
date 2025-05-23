@@ -86,6 +86,10 @@ namespace p5r.enhance.cbt.reloaded
         public unsafe delegate int GetAssistBustupIDDelegate(int a1, nint a2);
         public GetAssistBustupIDDelegate GetAssistBustupID;
 
+        /*[Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public unsafe delegate void LoadSoundByCueIDCombatVoiceDelegate(nint a1, nint a2, int CueID, byte a4);
+        public LoadSoundByCueIDCombatVoiceDelegate LoadSoundByCueIDCombatVoice;*/
+
         private nint GetDaysAddr = 0;
         private nint GetUserLangAddr = 0;
 
@@ -182,6 +186,12 @@ namespace p5r.enhance.cbt.reloaded
             {
                 GetAssistBustupID = _hooks.CreateWrapper<GetAssistBustupIDDelegate>(address, out _);
             });
+
+            /*// v1.0.0 = 0x1417e9bd0
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 55 57 41 54 41 56 41 57 48 8B EC 48 83 EC 40 0F B7 41 ??", "LoadSoundByCueIDCombatVoice_Sig", address =>
+            {
+                LoadSoundByCueIDCombatVoice = _hooks.CreateWrapper<LoadSoundByCueIDCombatVoiceDelegate>(address, out _);
+            });*/
 
         }
 

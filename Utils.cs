@@ -67,8 +67,7 @@ internal unsafe class Utils
             {
                 if (!result.Found)
                 {
-                    LogError($"1 or more Signature scan has failed, make sure you are using latest game version/update");
-                    action(-1);
+                    LogError($"Signature scan for {name} has failed, make sure you are using latest game version/update");
                     return;
                 }
                 LogDebug($"Found {name} at 0x{result.Offset + BaseAddress:X}");
@@ -98,6 +97,14 @@ internal unsafe class Utils
         var memory = Memory.Instance;
 
         byte[] Bytes = { 0xb8, 0, 0, 0, 0 };
+
+        memory.SafeWrite((nuint)target, Bytes);
+    }
+    internal static unsafe void WriteReturn1(nint target)
+    {
+        var memory = Memory.Instance;
+
+        byte[] Bytes = { 0xb8, 1, 0, 0, 0 };
 
         memory.SafeWrite((nuint)target, Bytes);
     }

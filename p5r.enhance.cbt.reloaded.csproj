@@ -7,7 +7,7 @@
     <LangVersion>12.0</LangVersion>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <OutputPath>$(RELOADEDIIMODS)/p5r.enhance.cbt.reloaded</OutputPath>
+    <OutputPath>$(RELOADEDIIMODS)/p5r.enhance.cbt</OutputPath>
     <ImplicitUsings>enable</ImplicitUsings>
 
     <!-- IL Trimming Support for Framework Dependent Apps. Unofficial.
@@ -37,7 +37,7 @@
     <Content Include="ModConfig.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Update="Preview.png">
+    <None Update="preview.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -66,7 +66,7 @@ namespace p5r.enhance.cbt.reloaded
             var criFsController = _modLoader.GetController<ICriFsRedirectorApi>();
             if (criFsController == null || !criFsController.TryGetTarget(out var criFsApi))
             {
-                _logger.WriteLine($"CriFS has failed to load! Normal files will not load properly!", System.Drawing.Color.Red);
+                LogError($"CriFS has failed to load! Normal files will not load properly!");
                 return;
             }
 
@@ -99,7 +99,7 @@ namespace p5r.enhance.cbt.reloaded
             var BGMEController = _modLoader.GetController<IBgmeApi>();
             if (BGMEController == null || !BGMEController.TryGetTarget(out var bgmeApi))
             {
-                _logger.WriteLine($"BGME has failed to load!", System.Drawing.Color.Red);
+                LogError($"BGME has failed to load!");
                 return;
             }
 
@@ -119,14 +119,22 @@ namespace p5r.enhance.cbt.reloaded
 
                 if (_configuration._019_extraCostumes)
                 {
-                    cfAPI.AddCostumesFolder(this._modConfig.ModId, "ExtraCostumes");
+                    cfAPI.AddCostumesFolder(this._modConfig.ModId, Path.Join(_modLoader.GetDirectoryForModId(this._modConfig.ModId), "ExtraCostumes"));
                 }
 
                 if (_configuration._019_extraCostumes_Joker)
                 {
-                    cfAPI.AddCostumesFolder(this._modConfig.ModId, "ExtraCostumes_Joker");
+                    cfAPI.AddCostumesFolder(this._modConfig.ModId, Path.Join(_modLoader.GetDirectoryForModId(this._modConfig.ModId), "ExtraCostumes_Joker"));
+                }
+
+                if (_configuration._019_extraCostumes_BGM)
+                {
+                    cfAPI.AddCostumesFolder(this._modConfig.ModId, Path.Join(_modLoader.GetDirectoryForModId(this._modConfig.ModId), "ExtraCostumes_BGM"));
                 }
             }
+
+            LoadCBTMod DllLoader = new LoadCBTMod();
+            DllLoader.LoadCppDll(context);
 
 
             // For more information about this template, please see
