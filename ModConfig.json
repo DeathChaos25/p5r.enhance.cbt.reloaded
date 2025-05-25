@@ -101,6 +101,24 @@
           },
           "ReleaseMetadataName": "Sewer56.Update.ReleaseMetadata.json"
         },
+        "reloaded.universal.fileemulationframework.bf": {
+          "Config": {
+            "UserName": "Sewer56",
+            "RepositoryName": "FileEmulationFramework",
+            "UseReleaseTag": false,
+            "AssetFileName": "Mod.zip"
+          },
+          "ReleaseMetadataName": "BF.File.Emulator.ReleaseMetadata.json"
+        },
+        "p5rpc.evt.fadeouttablemerge": {
+          "Config": {
+            "UserName": "DeathChaos25",
+            "RepositoryName": "p5rpc.evt.fadeouttablemerge",
+            "UseReleaseTag": true,
+            "AssetFileName": "Mod.zip"
+          },
+          "ReleaseMetadataName": "p5rpc.evt.fadeouttablemerge.ReleaseMetadata.json"
+        },
         "Ryo.Reloaded": {
           "Config": {
             "UserName": "RyoTune",
@@ -127,15 +145,6 @@
             "AssetFileName": "Mod.zip"
           },
           "ReleaseMetadataName": "p5rpc.lib.ReleaseMetadata.json"
-        },
-        "reloaded.universal.fileemulationframework.bf": {
-          "Config": {
-            "UserName": "Sewer56",
-            "RepositoryName": "FileEmulationFramework",
-            "UseReleaseTag": false,
-            "AssetFileName": "Mod.zip"
-          },
-          "ReleaseMetadataName": "BF.File.Emulator.ReleaseMetadata.json"
         },
         "reloaded.universal.fileemulationframework.pak": {
           "Config": {
