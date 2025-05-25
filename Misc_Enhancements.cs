@@ -60,7 +60,7 @@ namespace p5r.enhance.cbt.reloaded
         public unsafe delegate int GetUnitModelID_Delegate(ushort a1, ushort a2, ushort a3);
         static private IHook<GetUnitModelID_Delegate> _hookGetUnitModelID;
 
-        public unsafe delegate nint LoadResourceImpl_Delegate(ushort type, byte a2, ushort index, ushort major, byte minor, byte sub, short a7, int a8, ushort a9, short a10);
+        public unsafe delegate nint LoadResourceImpl_Delegate(ushort type, byte a2, ushort index, ushort major, byte minor, byte sub, short a7, nint a8, ushort a9, short a10);
         static private IHook<LoadResourceImpl_Delegate> _hookLoadResourceImpl;
 
         public unsafe delegate nint SetTitleBGM_Delegate(TitleScreenStruct* a1);
@@ -499,7 +499,7 @@ namespace p5r.enhance.cbt.reloaded
         }
 
         public static unsafe nint LoadResourceImpl(
-            ushort type, byte a2, ushort index, ushort major, byte minor, byte sub, short a7, int a8, ushort a9, short a10)
+            ushort type, byte a2, ushort index, ushort major, byte minor, byte sub, short a7, nint a8, ushort a9, short a10)
         {
             // Log($"LoadResourceImpl: type {type}, a2 {a2}, index {index}, major {major}, minor {minor}, sub {sub}, a7 {a7}, a8 {a8}, a9 {a9}, a10 {a10}");
             if (type == 2 || type == 5)
