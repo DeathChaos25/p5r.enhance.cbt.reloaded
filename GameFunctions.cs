@@ -86,6 +86,14 @@ namespace p5r.enhance.cbt.reloaded
         public unsafe delegate int GetAssistBustupIDDelegate(int a1, nint a2);
         public GetAssistBustupIDDelegate GetAssistBustupID;
 
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public unsafe delegate encounterIDTBL* GetEncounterTBLEntryDelegate(int a1);
+        public GetEncounterTBLEntryDelegate GetEncounterTBLData;
+
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public unsafe delegate UnitTBL_Segment0* GetUnitTBL_Segment0_Delegate(int a1);
+        public GetUnitTBL_Segment0_Delegate GetUnitTBL_Segment0_Entry;
+
         /*[Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
         public unsafe delegate void LoadSoundByCueIDCombatVoiceDelegate(nint a1, nint a2, int CueID, byte a4);
         public LoadSoundByCueIDCombatVoiceDelegate LoadSoundByCueIDCombatVoice;*/
@@ -192,6 +200,19 @@ namespace p5r.enhance.cbt.reloaded
             {
                 LoadSoundByCueIDCombatVoice = _hooks.CreateWrapper<LoadSoundByCueIDCombatVoiceDelegate>(address, out _);
             });*/
+
+            // v1.0.0 = 0x1406eb08e
+            SigScan("E8 ?? ?? ?? ?? F6 00 01 74 ?? 45 32 E4", "get_encounter_tbl_data_Sig", address =>
+            {
+                var funcAddress = GetGlobalAddress(address + 1);
+                GetEncounterTBLData = _hooks.CreateWrapper<GetEncounterTBLEntryDelegate>((long)funcAddress, out _);
+            });
+
+            // v1.0.4 = 0x140d7bc90
+            SigScan("0F B7 C1 48 8D 0D ?? ?? ?? ?? 48 6B C0 44", "GetUnitTBL_Segment0_Entry", address =>
+            {
+                GetUnitTBL_Segment0_Entry = _hooks.CreateWrapper<GetUnitTBL_Segment0_Delegate>(address, out _);
+            });
 
         }
 

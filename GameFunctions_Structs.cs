@@ -185,7 +185,7 @@ namespace p5r.enhance.cbt.reloaded
         [StructLayout(LayoutKind.Sequential)]
         public struct datUnit
         {
-            public uint Flags;
+            public int Flags;
             public ushort unitType;
             public ushort Field06;
             public uint unitID;
@@ -544,14 +544,14 @@ namespace p5r.enhance.cbt.reloaded
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct UnitTBL_Segment1
+        public struct UnitTBL_Segment0
         {
-            public uint Flags;
+            public int Flags;
             public byte Arcana;
             public byte RESERVE;
             public ushort UnitLv;
-            public uint HP;
-            public uint SP;
+            public int HP;
+            public int SP;
             public unsafe fixed byte Stats[6]; // u8 Stats[6]
             public unsafe fixed ushort BattleSkills[8]; // public ushort BattleSkills[8]
             public ushort ExpReward;
@@ -1700,7 +1700,7 @@ namespace p5r.enhance.cbt.reloaded
         [StructLayout(LayoutKind.Sequential)]
         public struct encounterIDTBL
         {
-            public uint flags;
+            public int flags;
             public ushort Field04;
             public ushort Field06;
             public unsafe fixed ushort BattleUnitID[5]; // u16 BattleUnitID[5]

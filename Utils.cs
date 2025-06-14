@@ -1,9 +1,10 @@
 ﻿using p5r.enhance.cbt.reloaded.Configuration;
+using Reloaded.Memory;
+using Reloaded.Memory.Interfaces;
 using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
 using Reloaded.Mod.Interfaces;
 using System.Diagnostics;
-using Reloaded.Memory;
-using Reloaded.Memory.Interfaces;
+using System.Drawing;
 
 namespace p5r.enhance.cbt.reloaded;
 
@@ -46,7 +47,7 @@ internal unsafe class Utils
 
     internal static void LogNoPrefix(string message)
     {
-        _logger.WriteLineAsync($"{message}");
+        _logger.WriteLineAsync($"{message}", Color.LightGreen);
     }
 
     internal static void LogError(string message, Exception e)
