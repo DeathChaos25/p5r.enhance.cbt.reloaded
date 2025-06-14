@@ -636,7 +636,7 @@ namespace p5r.enhance.cbt.reloaded
 
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
 
-                memory.Write<int>((nuint)currUnit->Flags, ToggleBit(currUnit->Flags, toggleFlag, onOff));
+                memory.Write<int>((nuint)(&currUnit->Flags), ToggleBit(currUnit->Flags, toggleFlag, onOff));
 
                 return FlowStatus.SUCCESS;
             }, 0x2506);
@@ -665,8 +665,10 @@ namespace p5r.enhance.cbt.reloaded
             {
                 int unitID = flowApi.GetIntArg(0);
                 byte arcana = (byte)flowApi.GetIntArg(1);
-                nuint targetPTR = (nuint)(UNIT_TBL_Section0_PTR + (long)(unitID * UNIT_TBL_Section0_EntrySize + 4)); // UnitTBL_Segment1->Arcana
-                memory.Write<byte>(targetPTR, arcana);
+
+                var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
+
+                memory.Write<byte>((nuint)(&currUnit->Arcana), arcana);
                 return FlowStatus.SUCCESS;
             }, 0x2508);
 
@@ -1846,7 +1848,7 @@ namespace p5r.enhance.cbt.reloaded
             }
 
             datUnit* currEnemy = currAI->StructD_ptr->nextPTR->datUnitPtr;
-            LogNoPrefix($"datUnit PTR for Current enemy is 0x{(nint)(&currEnemy):X8}\nEnemy ID / Level -> {currEnemy->unitID} / {currEnemy->Joker_Lv} \nHP/SP -> {currEnemy->currentHP}/{currEnemy->currentSP} \ndatUnit Flags -> 0x{currEnemy->Flags:X8}");
+            // LogNoPrefix($"datUnit PTR for Current enemy is 0x{(nint)(&currEnemy):X8}\nEnemy ID / Level -> {currEnemy->unitID} / {currEnemy->Joker_Lv} \nHP/SP -> {currEnemy->currentHP}/{currEnemy->currentSP} \ndatUnit Flags -> 0x{currEnemy->Flags:X8}");
             return currEnemy;
         }
 
