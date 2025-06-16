@@ -90,6 +90,7 @@ namespace p5r.enhance.cbt.reloaded
 
         private static nint UNIT_TBL_Section0_PTR;
         private static nint UNIT_TBL_Section1_PTR;
+        private static nint UNIT_TBL_Section3_PTR;
         private static nint UNIT_TBL_Section4_PTR;
         private static nint ELSAI_TBL_Section0_PTR;
         private static nint ENCOUNT_TBL_Section0_PTR;
@@ -103,6 +104,7 @@ namespace p5r.enhance.cbt.reloaded
 
         private static int UNIT_TBL_Section0_EntrySize = 68;    // 0x44
         private static int UNIT_TBL_Section1_EntrySize = 40;    // 0x28
+        private static int UNIT_TBL_Section3_EntrySize = 24;    // 0x18
         private static int UNIT_TBL_Section4_EntrySize = 6;     // 0x06
         private static int ELSAI_TBL_Section0_EntrySize = 44;   // 0x2C
         private static int ENCOUNT_TBL_Section0_EntrySize = 44; // 0x2C
@@ -311,7 +313,7 @@ namespace p5r.enhance.cbt.reloaded
             {
                 var funcAddress = GetGlobalAddress(address + 3);
                 UNIT_TBL_Section0_PTR = (nint)funcAddress;
-                Log($"UNIT_TBL_Section0_PTR: {UNIT_TBL_Section0_PTR:X}");
+                Log($"UNIT_TBL_Section0_PTR: 0x{UNIT_TBL_Section0_PTR:X}");
             });
 
             // v1.0.4 = 0x140d7a8e9
@@ -319,7 +321,15 @@ namespace p5r.enhance.cbt.reloaded
             {
                 var funcAddress = GetGlobalAddress(address + 3);
                 UNIT_TBL_Section1_PTR = (nint)funcAddress;
-                Log($"UNIT_TBL_Section1_PTR: {UNIT_TBL_Section1_PTR:X}");
+                Log($"UNIT_TBL_Section1_PTR: 0x{UNIT_TBL_Section1_PTR:X}");
+            });
+
+            // v1.0.4 = 0x140d7a9c6
+            SigScan("48 8D 0D ?? ?? ?? ?? 0F C8 48 83 C7 04 4C 63 C0 48 8B D7 89 44 24 ?? E8 ?? ?? ?? ?? 4C 63 44 24 ??", "UNIT_TBL_Section3_PTR", address => // 
+            {
+                var funcAddress = GetGlobalAddress(address + 3);
+                UNIT_TBL_Section3_PTR = (nint)funcAddress;
+                Log($"UNIT_TBL_Section3_PTR: 0x{UNIT_TBL_Section3_PTR:X}");
             });
 
             // v1.0.4 = 0x140a45b5f
@@ -327,7 +337,7 @@ namespace p5r.enhance.cbt.reloaded
             {
                 var funcAddress = GetGlobalAddress(address + 3);
                 UNIT_TBL_Section4_PTR = (nint)funcAddress;
-                Log($"UNIT_TBL_Section4_PTR: {UNIT_TBL_Section4_PTR:X}");
+                Log($"UNIT_TBL_Section4_PTR: 0x{UNIT_TBL_Section4_PTR:X}");
             });
 
             // v1.0.4 = 0x14c322259
@@ -335,7 +345,7 @@ namespace p5r.enhance.cbt.reloaded
             {
                 var funcAddress = GetGlobalAddress(address + 3);
                 ELSAI_TBL_Section0_PTR = (nint)funcAddress;
-                Log($"ELSAI_TBL_Section0_PTR: {ELSAI_TBL_Section0_PTR:X}");
+                Log($"ELSAI_TBL_Section0_PTR: 0x{ELSAI_TBL_Section0_PTR:X}");
             });
 
             // v1.0.4 = 0x141172149
@@ -343,35 +353,35 @@ namespace p5r.enhance.cbt.reloaded
             {
                 var funcAddress = GetGlobalAddress(address + 3);
                 ENCOUNT_TBL_Section0_PTR = (nint)funcAddress;
-                Log($"ENCOUNT_TBL_Section0_PTR: {ENCOUNT_TBL_Section0_PTR:X}");
+                Log($"ENCOUNT_TBL_Section0_PTR: 0x{ENCOUNT_TBL_Section0_PTR:X}");
             });
 
             SigScan("48 8D 0D ?? ?? ?? ?? 80 7C ?? ?? 01", "SKILL_TBL_Section0_PTR", address => // 
             {
                 var funcAddress = GetGlobalAddress(address + 3);
                 SKILL_TBL_Section0_PTR = (nint)funcAddress;
-                Log($"SKILL_TBL_Section0_PTR: {SKILL_TBL_Section0_PTR:X}");
+                Log($"SKILL_TBL_Section0_PTR: 0x{SKILL_TBL_Section0_PTR:X}");
             });
 
             SigScan("48 8D 05 ?? ?? ?? ?? 80 7C ?? ?? 01", "SKILL_TBL_Section1_PTR", address => // 
             {
                 var funcAddress = GetGlobalAddress(address + 3);
                 SKILL_TBL_Section1_PTR = (nint)funcAddress;
-                Log($"SKILL_TBL_Section1_PTR: {SKILL_TBL_Section1_PTR:X}");
+                Log($"SKILL_TBL_Section1_PTR: 0x{SKILL_TBL_Section1_PTR:X}");
             });
 
             SigScan("48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F B6 05 ?? ?? ?? ?? 48 8D 1D ?? ?? ?? ??", "ENEMY_ANALYSIS_DATA_PTR", address => // 
             {
                 var funcAddress = GetGlobalAddress(address + 3);
                 ENEMY_ANALYSIS_DATA_PTR = (nint)funcAddress;
-                Log($"ENEMY_ANALYSIS_DATA_PTR: {ENEMY_ANALYSIS_DATA_PTR:X}");
+                Log($"ENEMY_ANALYSIS_DATA_PTR: 0x{ENEMY_ANALYSIS_DATA_PTR:X}");
             });
 
             SigScan("4C 8B 05 ?? ?? ?? ?? 41 8B 50 ?? 29 CA", "CurrentAIBasePTR", address => // 
             {
                 var funcAddress = GetGlobalAddress(address + 3);
                 CurrentAIBasePTR = (nint)funcAddress;
-                Log($"CurrentAIBasePTR: {CurrentAIBasePTR:X}");
+                Log($"CurrentAIBasePTR: 0x{CurrentAIBasePTR:X}");
             });
 
             ////////////////////////////////
@@ -1568,6 +1578,69 @@ namespace p5r.enhance.cbt.reloaded
                 flowApi.SetReturnValue(messID);
                 return FlowStatus.SUCCESS;
             }, 0x255F);
+
+            flowFramework.Register("SET_UNIT_VOICE_ID", 2, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                byte voiceID = (byte)flowApi.GetIntArg(1);
+
+                var currUnit = GetUnitTBL_Segment3_Entry(unitID);
+
+                memory.Write<byte>((nuint)(&currUnit->VoiceID), voiceID);
+                return FlowStatus.SUCCESS;
+            }, 0x2560);
+
+            flowFramework.Register("GET_UNIT_VOICE_ID", 1, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+
+                var currUnit = GetUnitTBL_Segment3_Entry(unitID);
+
+                flowApi.SetReturnValue(currUnit->VoiceID);
+                return FlowStatus.SUCCESS;
+            }, 0x2561);
+
+            flowFramework.Register("SET_UNIT_TALK_PERSONALITY", 2, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                byte talktype = (byte)flowApi.GetIntArg(1);
+
+                var currUnit = GetUnitTBL_Segment3_Entry(unitID);
+
+                memory.Write<byte>((nuint)(&currUnit->TALK_PERSON), talktype);
+                return FlowStatus.SUCCESS;
+            }, 0x2562);
+
+            flowFramework.Register("GET_UNIT_TALK_PERSONALITY", 1, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+
+                var currUnit = GetUnitTBL_Segment3_Entry(unitID);
+
+                flowApi.SetReturnValue(currUnit->TALK_PERSON);
+                return FlowStatus.SUCCESS;
+            }, 0x2563);
+
+            flowFramework.Register("SET_UNIT_VOICE_ABC", 2, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                byte abc = (byte)flowApi.GetIntArg(1);
+
+                var currUnit = GetUnitTBL_Segment3_Entry(unitID);
+
+                memory.Write<byte>((nuint)(&currUnit->VoicePackABC), abc);
+                return FlowStatus.SUCCESS;
+            }, 0x2564);
+
+            flowFramework.Register("GET_UNIT_VOICE_ABC", 1, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+
+                var currUnit = GetUnitTBL_Segment3_Entry(unitID);
+
+                flowApi.SetReturnValue(currUnit->VoicePackABC);
+                return FlowStatus.SUCCESS;
+            }, 0x2565);
         }
 
         public static unsafe int HookCalendarTransPlayKnifeSfx(CalendarTransStruct* a1)
@@ -1872,6 +1945,12 @@ namespace p5r.enhance.cbt.reloaded
                 currentByte &= (byte)~(1 << bitInByte); // off
 
             memory.Write<byte>((nuint)(baseAddress + targetByteOffset), currentByte);
+        }
+
+        public UnitTBL_Segment3* GetUnitTBL_Segment3_Entry(int enemyID)
+        {
+            nuint targetPTR = (nuint)(UNIT_TBL_Section3_PTR + (long)(enemyID * UNIT_TBL_Section3_EntrySize));
+            return (UnitTBL_Segment3*)targetPTR;
         }
     }
 }
