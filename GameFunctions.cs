@@ -94,6 +94,10 @@ namespace p5r.enhance.cbt.reloaded
         public unsafe delegate UnitTBL_Segment0* GetUnitTBL_Segment0_Delegate(int a1);
         public GetUnitTBL_Segment0_Delegate GetUnitTBL_Segment0_Entry;
 
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public delegate ushort GetUnitMaxBulletsDelegate(ushort itemID);
+        public GetUnitMaxBulletsDelegate GetUnitMaxBullets;
+
         /*[Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
         public unsafe delegate void LoadSoundByCueIDCombatVoiceDelegate(nint a1, nint a2, int CueID, byte a4);
         public LoadSoundByCueIDCombatVoiceDelegate LoadSoundByCueIDCombatVoice;*/
@@ -212,6 +216,13 @@ namespace p5r.enhance.cbt.reloaded
             SigScan("0F B7 C1 48 8D 0D ?? ?? ?? ?? 48 6B C0 44", "GetUnitTBL_Segment0_Entry", address =>
             {
                 GetUnitTBL_Segment0_Entry = _hooks.CreateWrapper<GetUnitTBL_Segment0_Delegate>(address, out _);
+            });
+
+            // v1.0.4 = 0x14157c69f
+            SigScan("48 89 5C 24 ?? 56 48 83 EC 20 33 C9 E8 ?? ?? ?? ?? 0F B7 C8", "BULLET_RECOVERY", address =>
+            {
+                var funcAddress = GetGlobalAddress(address + 1);
+                GetUnitMaxBullets = _hooks.CreateWrapper<GetUnitMaxBulletsDelegate>((long)funcAddress, out _);
             });
 
         }
