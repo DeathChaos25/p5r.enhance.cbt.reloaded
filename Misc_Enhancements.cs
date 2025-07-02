@@ -81,10 +81,14 @@ namespace p5r.enhance.cbt.reloaded
         public unsafe delegate bool isMakotoNaviAvailable_Delegate();
         static private IHook<isMakotoNaviAvailable_Delegate> _hookIsMakotoNaviAvailable;
 
+        public unsafe delegate void checkHasEnemyDDSBossName_Delegate(EnemyPersonaFunctionStruct3* a1);
+        static private IHook<checkHasEnemyDDSBossName_Delegate> _hookcheckHasEnemyDDSBossName;
+
         public static byte rndTitle = 0;
 
         private static nint TitleBGMAddr = 0;
         private static nint PlayerOutlineColorAddr = 0;
+        private static nint EnemyIDDDSNamePatchAddress = 0;
 
         private static readonly int[] BTL_COUNTERS = new int[512];
 
@@ -266,6 +270,18 @@ namespace p5r.enhance.cbt.reloaded
                 byte[] Bytes = { 0x48, 0xE9 }; // // change jz to jmp
 
                 memory.SafeWrite((nuint)address + 0x3A, Bytes);
+            });
+
+            // v1.0.4 = 0x140b527c0
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 55 41 54 41 55 41 56 41 57 48 8D AC 24 ?? ?? ?? ?? 48 81 EC 10 02 00 00", "checkHasEnemyDDSBossName", address =>
+            {
+                _hookcheckHasEnemyDDSBossName = _hooks.CreateHook<checkHasEnemyDDSBossName_Delegate>(checkHasEnemyDDSBossName, address).Activate();
+            });
+
+            // v1.0.4 = 0x140b527c0
+            SigScan("C7 45 ?? 62 02 63 02 C7 45 ?? E8 02 E9 02 C7 45 ?? AE 02 AF 02 C7 45 ?? 34 02 35 02 C7 45 ?? 36 02 37 02 C7 45 00 39 02 45 02", "checkHasEnemyDDSBossName Enemy ID", address =>
+            {
+                EnemyIDDDSNamePatchAddress = address;
             });
 
             // v1.0.0 = 0x14163cb52
@@ -650,6 +666,16 @@ namespace p5r.enhance.cbt.reloaded
 
                 return FlowStatus.SUCCESS;
             }, 0x2506);
+
+            flowFramework.Register("GET_UNIT_FLAGS", 2, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                var toggleFlag = flowApi.GetIntArg(1);
+                var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
+                int isSet = IsBitSet(currUnit->Flags, toggleFlag);
+                flowApi.SetReturnValue(isSet);
+                return FlowStatus.SUCCESS;
+            }, 0x2505);
 
             flowFramework.Register("SET_STATUS_EFFECT", 3, () =>
             {
@@ -1833,6 +1859,36 @@ namespace p5r.enhance.cbt.reloaded
             _hookCheckShaderExists.OriginalFunction(a1);
         }
 
+        public static unsafe void checkHasEnemyDDSBossName(EnemyPersonaFunctionStruct3* a1)
+        {
+            int enemyID = 0;
+            
+            if (a1 != (EnemyPersonaFunctionStruct3*)0)
+            {
+                enemyID = (int)a1->datUnitPtr->unitID;
+            }
+
+            if (enemyID > 0)
+            {
+                int unitFlags = _gameFunctions.GetUnitTBL_Segment0_Entry(enemyID)->Flags;
+                LogDebug($"DDS Has Boss Name function checked for enemy {a1->datUnitPtr->unitID} with unit tbl flags 0x{unitFlags:X8}\n");
+                var memory = Memory.Instance;
+
+                if (IsBitSet(unitFlags, 31) != 0)
+                {
+                    LogDebug($"DDS Boss Name patch applied for enemy {enemyID}\n");
+                    memory.SafeWrite((nuint)EnemyIDDDSNamePatchAddress + 5, BitConverter.GetBytes((short)enemyID));
+                }
+                else
+                {
+                    LogDebug($"Enemy {enemyID} did not have custom boss dds flag, reverting\n");
+                    memory.SafeWrite((nuint)EnemyIDDDSNamePatchAddress + 5, BitConverter.GetBytes((short)611));
+                }
+            }
+
+            _hookcheckHasEnemyDDSBossName.OriginalFunction(a1);
+        }
+
         public static unsafe void CombineColorBytes(nint a1, SoundBank_Struct* a2, nint a3)
         {
             a2->Field000 = (int)ByteswapUlong((uint)CombineBytes(_configuration._031_JokerColor_R, _configuration._031_JokerColor_G, _configuration._031_JokerColor_B));
@@ -1890,7 +1946,7 @@ namespace p5r.enhance.cbt.reloaded
             if (n < 0 || n >= 32)
                 throw new ArgumentOutOfRangeException(nameof(n), "Bit position must be between 0 and 31.");
 
-            return (flags & (1 << n));
+            return (flags & (1 << n)) != 0 ? 1 : 0;
         }
 
         static long IsBitSet(long flags, int n)
@@ -1898,7 +1954,7 @@ namespace p5r.enhance.cbt.reloaded
             if (n < 0 || n >= 64)
                 throw new ArgumentOutOfRangeException(nameof(n), "Bit position must be between 0 and 63.");
 
-            return flags & (1L << n);  // Returns 0 if not set, or 2^n if set
+            return (flags & (1L << n)) != 0 ? 1 : 0;
         }
 
 
