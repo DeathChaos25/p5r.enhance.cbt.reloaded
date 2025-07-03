@@ -2,7 +2,7 @@
   "ModId": "p5r.enhance.cbt",
   "ModName": "P5R Custom Bonus Tweaks (Reloaded)",
   "ModAuthor": "DeathChaos",
-  "ModVersion": "2.5.9",
+  "ModVersion": "2.6.0",
   "ModDescription": "A massive collection of enhancements/QoL for P5R (Steam ver.)",
   "ModDll": "p5r.enhance.cbt.reloaded.dll",
   "ModIcon": "preview.jpg",
@@ -119,6 +119,15 @@
           },
           "ReleaseMetadataName": "p5rpc.evt.fadeouttablemerge.ReleaseMetadata.json"
         },
+        "p5rpc.lib": {
+          "Config": {
+            "UserName": "AnimatedSwine37",
+            "RepositoryName": "p5rpc.lib",
+            "UseReleaseTag": true,
+            "AssetFileName": "Mod.zip"
+          },
+          "ReleaseMetadataName": "p5rpc.lib.ReleaseMetadata.json"
+        },
         "Ryo.Reloaded": {
           "Config": {
             "UserName": "RyoTune",
@@ -136,15 +145,6 @@
             "AssetFileName": "Mod.zip"
           },
           "ReleaseMetadataName": "SharedScans.Reloaded.ReleaseMetadata.json"
-        },
-        "p5rpc.lib": {
-          "Config": {
-            "UserName": "AnimatedSwine37",
-            "RepositoryName": "p5rpc.lib",
-            "UseReleaseTag": true,
-            "AssetFileName": "Mod.zip"
-          },
-          "ReleaseMetadataName": "p5rpc.lib.ReleaseMetadata.json"
         },
         "reloaded.universal.fileemulationframework.pak": {
           "Config": {
