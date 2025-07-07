@@ -98,6 +98,10 @@ namespace p5r.enhance.cbt.reloaded
         public delegate ushort GetUnitMaxBulletsDelegate(ushort itemID);
         public GetUnitMaxBulletsDelegate GetUnitMaxBullets;
 
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public delegate nint somethingBossDDSFileOpenDelegate(nint a1, uint a2, uint a3);
+        public somethingBossDDSFileOpenDelegate somethingBossDDSFileOpen;
+
         /*[Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
         public unsafe delegate void LoadSoundByCueIDCombatVoiceDelegate(nint a1, nint a2, int CueID, byte a4);
         public LoadSoundByCueIDCombatVoiceDelegate LoadSoundByCueIDCombatVoice;*/
@@ -223,6 +227,11 @@ namespace p5r.enhance.cbt.reloaded
             {
                 var funcAddress = GetGlobalAddress(address + 1);
                 GetUnitMaxBullets = _hooks.CreateWrapper<GetUnitMaxBulletsDelegate>((long)funcAddress, out _);
+            });
+
+            SigScan("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC 60 48 89 CD 89 D6", "somethingBossDDSFileOpen_Sig", address =>
+            {
+                somethingBossDDSFileOpen = _hooks.CreateWrapper<somethingBossDDSFileOpenDelegate>(address, out _);
             });
 
         }

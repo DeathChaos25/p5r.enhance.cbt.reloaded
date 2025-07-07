@@ -1948,13 +1948,22 @@ namespace p5r.enhance.cbt.reloaded
                 if (IsBitSet(unitFlags, 31) != 0)
                 {
                     LogDebug($"DDS Boss Name patch applied for enemy {enemyID}\n");
-                    memory.SafeWrite((nuint)EnemyIDDDSNamePatchAddress + 5, BitConverter.GetBytes((short)enemyID));
+                    var newEnemyID = _gameFunctions.GetUnitTBL_Segment0_Entry(enemyID)->EvtItemDrop[2];
+                    if (newEnemyID > 0) enemyID = newEnemyID;
+
+                    var FileString = $"battle/analyze/boss_name_{enemyID:d3}.dds";
+                    var FileStringBytes = Marshal.StringToHGlobalAnsi(FileString);
+                    nint result = _gameFunctions.somethingBossDDSFileOpen(FileStringBytes, 1, 0);
+                    memory.Write<nint>((nuint)(&a1->Field38), result);
+                    Marshal.FreeHGlobal(FileStringBytes);
+
+                    return;
                 }
-                else
+                /*else
                 {
                     LogDebug($"Enemy {enemyID} did not have custom boss dds flag, reverting\n");
                     memory.SafeWrite((nuint)EnemyIDDDSNamePatchAddress + 5, BitConverter.GetBytes((short)611));
-                }
+                }*/
             }
 
             _hookcheckHasEnemyDDSBossName.OriginalFunction(a1);
