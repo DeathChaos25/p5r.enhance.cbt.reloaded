@@ -207,15 +207,15 @@ namespace p5r.enhance.cbt.reloaded
                     int rndBGM = rndTitle;
                     if (rndBGM == 1)
                     {
-                        memory.SafeWrite((nuint)TitleBGMAddr, BitConverter.GetBytes((uint)101));              // Cue 101, P5 title screen
+                        memory.SafeWrite((nuint)TitleBGMAddr, BitConverter.GetBytes((uint)101));   // Cue 101, P5 title screen
                     }
                     else if (rndBGM == 2)
                     {
-                        memory.SafeWrite((nuint)TitleBGMAddr, BitConverter.GetBytes((uint)10999));     // Cue 10999, P5S title screen
+                        memory.SafeWrite((nuint)TitleBGMAddr, BitConverter.GetBytes((uint)10999)); // Cue 10999, P5S title screen
                     }
                     else
                     {
-                        memory.SafeWrite((nuint)TitleBGMAddr, BitConverter.GetBytes((uint)901)); // Cue 901, P5R title screen
+                        memory.SafeWrite((nuint)TitleBGMAddr, BitConverter.GetBytes((uint)901));  // Cue 901, P5R title screen
                     }
                 }
             });
@@ -290,6 +290,14 @@ namespace p5r.enhance.cbt.reloaded
                 byte[] Bytes = { 0xEB }; // // change jz to jmp
 
                 memory.SafeWrite((nuint)address + 0x15, Bytes);
+            });
+
+            // v1.0.4 = 0x?????????
+            SigScan("83 F8 1A 0F 86 ?? ?? ?? ??", "Joker Select Portait Range Fix", address =>
+            {
+                byte[] Bytes = { 0x31 }; // change 26 to 49
+
+                memory.SafeWrite((nuint)address + 2, Bytes);
             });
 
             // v1.0.0 = 0x140ea3e15
@@ -676,6 +684,69 @@ namespace p5r.enhance.cbt.reloaded
                 flowApi.SetReturnValue(isSet);
                 return FlowStatus.SUCCESS;
             }, 0x2505);
+
+            flowFramework.Register("SET_UNIT_ITEM_DROP_ITEM", 3, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                int ItemDropSlot = flowApi.GetIntArg(1);
+                int ItemID = flowApi.GetIntArg(2);
+
+                var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
+                memory.Write<short>((nuint)(&currUnit->ItemDrops[ItemDropSlot*2]), (short)ItemID);
+
+                return FlowStatus.SUCCESS;
+            }, 0x2506);
+
+            flowFramework.Register("SET_UNIT_ITEM_DROP_PROBABILITY", 3, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                int ItemDropSlot = flowApi.GetIntArg(1);
+                int itemProbability = flowApi.GetIntArg(2);
+                var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
+                memory.Write<short>((nuint)(&currUnit->ItemDrops[ItemDropSlot * 2 + 1]), (short)itemProbability);
+                return FlowStatus.SUCCESS;
+            }, 0x2506);
+
+            flowFramework.Register("GET_UNIT_ITEM_DROP_ITEM", 3, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                int ItemDropSlot = flowApi.GetIntArg(1);
+                var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
+
+                int itemID = memory.Read<short>((nuint)(&currUnit->ItemDrops[ItemDropSlot * 2]));
+                flowApi.SetReturnValue(itemID);
+                return FlowStatus.SUCCESS;
+            }, 0x2506);
+
+            flowFramework.Register("GET_UNIT_ITEM_DROP_PROBABILITY", 3, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                int ItemDropSlot = flowApi.GetIntArg(1);
+                var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
+                int itemProbability = memory.Read<short>((nuint)(&currUnit->ItemDrops[ItemDropSlot * 2 + 1]));
+                flowApi.SetReturnValue(itemProbability);
+                return FlowStatus.SUCCESS;
+            }, 0x2506);
+
+            flowFramework.Register("SET_UNIT_EVT_ITEM", 3, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                int ItemSlot = flowApi.GetIntArg(1);
+                int ItemID = flowApi.GetIntArg(2);
+                var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
+                memory.Write<short>((nuint)(&currUnit->EvtItemDrop[ItemSlot]), (short)ItemID);
+                return FlowStatus.SUCCESS;
+            }, 0x2506);
+
+            flowFramework.Register("GET_UNIT_EVT_ITEM", 2, () =>
+            {
+                int unitID = flowApi.GetIntArg(0);
+                int ItemSlot = flowApi.GetIntArg(1);
+                var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
+                int itemID = memory.Read<short>((nuint)(&currUnit->EvtItemDrop[ItemSlot]));
+                flowApi.SetReturnValue(itemID);
+                return FlowStatus.SUCCESS;
+            }, 0x2506);
 
             flowFramework.Register("SET_STATUS_EFFECT", 3, () =>
             {

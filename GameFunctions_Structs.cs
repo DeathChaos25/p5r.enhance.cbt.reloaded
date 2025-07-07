@@ -220,9 +220,14 @@ namespace p5r.enhance.cbt.reloaded
         [StructLayout(LayoutKind.Sequential)]
         public struct EnemyPersonaFunctionStruct3
         {
-            public nint ptr1;
-            public nint ptr2;
-            public unsafe datUnit* datUnitPtr;
+            public nint Field00;
+            public nint Field08;
+            public unsafe datUnit* datUnitPtr; // Field10
+            public nint Field18;
+            public nint Field20;
+            public nint Field28;
+            public nint Field30;
+            public nint Field38;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -556,7 +561,7 @@ namespace p5r.enhance.cbt.reloaded
             public unsafe fixed ushort BattleSkills[8]; // public ushort BattleSkills[8]
             public ushort ExpReward;
             public ushort MoneyReward;
-            public unsafe fixed uint ItemDrops[4]; // public uint ItemDrops[4]
+            public unsafe fixed ushort ItemDrops[8];
             public unsafe fixed ushort EvtItemDrop[3]; // public ushort EvtItemDrop[3]
             public byte AtkAttribute;
             public byte AtkAccuracy;
