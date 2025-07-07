@@ -707,7 +707,7 @@ namespace p5r.enhance.cbt.reloaded
                 return FlowStatus.SUCCESS;
             }, 0x2506);
 
-            flowFramework.Register("GET_UNIT_ITEM_DROP_ITEM", 3, () =>
+            flowFramework.Register("GET_UNIT_ITEM_DROP_ITEM", 2, () =>
             {
                 int unitID = flowApi.GetIntArg(0);
                 int ItemDropSlot = flowApi.GetIntArg(1);
@@ -718,7 +718,7 @@ namespace p5r.enhance.cbt.reloaded
                 return FlowStatus.SUCCESS;
             }, 0x2506);
 
-            flowFramework.Register("GET_UNIT_ITEM_DROP_PROBABILITY", 3, () =>
+            flowFramework.Register("GET_UNIT_ITEM_DROP_PROBABILITY", 2, () =>
             {
                 int unitID = flowApi.GetIntArg(0);
                 int ItemDropSlot = flowApi.GetIntArg(1);
