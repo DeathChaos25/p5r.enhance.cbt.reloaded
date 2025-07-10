@@ -16,6 +16,7 @@ internal unsafe class Utils
     internal static nint BaseAddress { get; private set; }
 
     internal static bool DEBUG = false;
+    internal static bool FUNCDEBUG = false;
 
     internal static bool Initialise(ILogger logger, Config config, IModLoader modLoader)
     {
@@ -37,6 +38,12 @@ internal unsafe class Utils
     internal static void LogDebug(string message)
     {
         if (DEBUG)
+            _logger.WriteLineAsync($"[Custom Bonus Tweaks] {message}");
+    }
+
+    internal static void LogDebugFunc(string message)
+    {
+        if (FUNCDEBUG)
             _logger.WriteLineAsync($"[Custom Bonus Tweaks] {message}");
     }
 

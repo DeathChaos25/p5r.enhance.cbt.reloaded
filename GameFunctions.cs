@@ -102,6 +102,10 @@ namespace p5r.enhance.cbt.reloaded
         public delegate nint somethingBossDDSFileOpenDelegate(nint a1, uint a2, uint a3);
         public somethingBossDDSFileOpenDelegate somethingBossDDSFileOpen;
 
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public delegate ushort GetPlayerIDFromPartySlotDelegate(int a1);
+        public GetPlayerIDFromPartySlotDelegate GetPlayerIDFromPartySlot;
+
         /*[Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
         public unsafe delegate void LoadSoundByCueIDCombatVoiceDelegate(nint a1, nint a2, int CueID, byte a4);
         public LoadSoundByCueIDCombatVoiceDelegate LoadSoundByCueIDCombatVoice;*/
@@ -232,6 +236,13 @@ namespace p5r.enhance.cbt.reloaded
             SigScan("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC 60 48 89 CD 89 D6", "somethingBossDDSFileOpen_Sig", address =>
             {
                 somethingBossDDSFileOpen = _hooks.CreateWrapper<somethingBossDDSFileOpenDelegate>(address, out _);
+            });
+
+            // v1.0.4 = 0x140d656f0
+            SigScan("E8 ?? ?? ?? ?? 66 85 C0 74 ?? 41 FF C4", "GetUnitIDFromPartySlot", address =>
+            {
+                var funcAddress = GetGlobalAddress(address + 1);
+                GetPlayerIDFromPartySlot = _hooks.CreateWrapper<GetPlayerIDFromPartySlotDelegate>((long)funcAddress, out _);
             });
 
         }

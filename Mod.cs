@@ -95,6 +95,10 @@ namespace p5r.enhance.cbt.reloaded
             {
                 criFsApi.AddProbingPath(Path.Combine("OptionalModFiles", "NOPRERENDERS.CPK"));
             }
+            if (_configuration._013_NoGameOverOnJokerDie)
+            {
+                criFsApi.AddProbingPath(Path.Combine("OptionalModFiles", "NOJOKERDIE.CPK"));
+            }
 
             var BGMEController = _modLoader.GetController<IBgmeApi>();
             if (BGMEController == null || !BGMEController.TryGetTarget(out var bgmeApi))

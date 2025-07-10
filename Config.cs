@@ -32,6 +32,12 @@ namespace p5r.enhance.cbt.reloaded.Configuration
         [Category("Enhancements")]
         public bool _012_enableAnnounceWeekday { get; set; } = true;
 
+        [DisplayName("Extra Joker Combat Voices")]
+        [Description("Adds additional combat voicelines to Joker.")]
+        [DefaultValue(true)]
+        [Category("Enhancements")]
+        public bool _015_enableJokerVoices { get; set; } = true;
+
         [DisplayName("Disable Makoto as Navigator")]
         [Description("Prevents Makoto from appearing as a navigator.")]
         [DefaultValue(false)]
@@ -39,11 +45,11 @@ namespace p5r.enhance.cbt.reloaded.Configuration
         [Display(Order = 1)]
         public bool _014_disableMakotoNavi { get; set; } = false;
 
-        [DisplayName("Extra Joker Combat Voices")]
-        [Description("Adds additional combat voicelines to Joker.")]
+        [DisplayName("No Game Over on Joker's Death")]
+        [Description("Makes the game over condition be that the entire party is dead\ninstead of just Joker dying.")]
         [DefaultValue(true)]
-        [Category("Enhancements")]
-        public bool _015_enableJokerVoices { get; set; } = true;
+        [Category("Toggles")]
+        public bool _013_NoGameOverOnJokerDie { get; set; } = false;
 
         [DisplayName("Fix double equip stats bug")]
         [Description("Fixes a bug that exists in the game that causes\nequipment stats to be counted twice.")]

@@ -1,4 +1,4 @@
-﻿using p5r.enhance.cbt.reloaded.Configuration;
+using p5r.enhance.cbt.reloaded.Configuration;
 using p5r.enhance.cbt.reloaded.Template;
 using p5rpc.flowscriptframework.interfaces;
 using p5rpc.lib.interfaces;
@@ -48,6 +48,8 @@ namespace p5r.enhance.cbt.reloaded
         /// </summary>
         private static Config _configuration;
 
+        private static IP5RLib? _p5rLib;
+
         /// <summary>
         /// The configuration of the currently executing mod.
         /// </summary>
@@ -83,6 +85,15 @@ namespace p5r.enhance.cbt.reloaded
 
         public unsafe delegate void checkHasEnemyDDSBossName_Delegate(EnemyPersonaFunctionStruct3* a1);
         static private IHook<checkHasEnemyDDSBossName_Delegate> _hookcheckHasEnemyDDSBossName;
+
+        public unsafe delegate bool AreBattleUnitsDeadDelegate(Participate* a1);
+        static private IHook<AreBattleUnitsDeadDelegate> _hookAreBattleUnitsDead;
+
+        public delegate nint PlayerEscapeDelegate(nint a1, nint a2);
+        static private IHook<PlayerEscapeDelegate> _hookPlayerEscape;
+
+        public delegate nint MarukiDetoxDelegate(Participate* a1, nint a2);
+        static private IHook<MarukiDetoxDelegate> _hookMarukiDetox;
 
         public static byte rndTitle = 0;
 
@@ -142,6 +153,8 @@ namespace p5r.enhance.cbt.reloaded
             {
                 throw new Exception("Failed to get IP5RLib Controller");
             }
+
+            _p5rLib = p5rLib;
 
             // v1.0.0 = 0x14097D305
             SigScan("48 8B 05 ?? ?? ?? ?? 0F B6 50 ?? 0F BF 08 E8 ?? ?? ?? ?? 3C 09", "get_days_Sig", address =>
@@ -309,6 +322,24 @@ namespace p5r.enhance.cbt.reloaded
                 }
             });
 
+            if (_configuration._013_NoGameOverOnJokerDie)
+            {
+                SigScan("4C 8B DC 48 83 EC 48 F6 41 ?? 04", "areBattleUnitsDead_Sig", address =>
+                {
+                    _hookAreBattleUnitsDead = _hooks.CreateHook<AreBattleUnitsDeadDelegate>(AreBattleUnitsDead, address).Activate();
+                });
+
+                SigScan("48 8B C4 48 89 50 ?? 55 53 56 48 8D A8 ?? ?? ?? ??", "PlayerEscape", address =>
+                {
+                    _hookPlayerEscape = _hooks.CreateHook<PlayerEscapeDelegate>(PlayerEscape, address).Activate();
+                });
+
+                SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 55 41 54 41 55 41 56 41 57 48 8B EC 48 81 EC 80 00 00 00 B9 05 01 00 00", "Maruki Detox Check", address =>
+                {
+                    _hookMarukiDetox = _hooks.CreateHook<MarukiDetoxDelegate>(MarukiDetox, address).Activate();
+                });
+            }
+
 
             // v1.0.0 = 0x140de801d
             SigScan("49 81 FA 40 0C 01 00", "PersonaVisualTBLALimit_Sig", address =>
@@ -439,11 +470,13 @@ namespace p5r.enhance.cbt.reloaded
                 {
                     LogNoPrefix($"0x{flowApi.GetIntArg(0):X8}");
                     return FlowStatus.SUCCESS;
-                }, 0x9999);
+                });
             }
 
             flowFramework.Register("BTL_GET_COUNTER", 1, () =>
             {
+                LogDebugFunc("BTL_GET_COUNTER called");
+                
                 var COUNTER = flowApi.GetIntArg(0);
 
                 flowApi.SetReturnValue(BTL_COUNTERS[COUNTER]);
@@ -453,6 +486,8 @@ namespace p5r.enhance.cbt.reloaded
 
             flowFramework.Register("BTL_SET_COUNTER", 2, () =>
             {
+                LogDebugFunc("BTL_SET_COUNTER called");
+
                 var COUNTER = flowApi.GetIntArg(0);
                 var value = flowApi.GetIntArg(1);
 
@@ -463,6 +498,8 @@ namespace p5r.enhance.cbt.reloaded
 
             flowFramework.Register("SET_HUMAN_LV", 2, () =>
             {
+                LogDebugFunc("SET_HUMAN_LV called");
+
                 var unitID = flowApi.GetIntArg(0);
 
                 if (unitID != 1) return FlowStatus.SUCCESS;
@@ -481,6 +518,8 @@ namespace p5r.enhance.cbt.reloaded
 
             flowFramework.Register("FLAG_DATA_INPUT", 3, () =>
             {
+                LogDebugFunc("FLAG_DATA_INPUT called");
+
                 int majorID = flowApi.GetIntArg(0);
                 int minorID = flowApi.GetIntArg(1);
 
@@ -511,6 +550,8 @@ namespace p5r.enhance.cbt.reloaded
 
             flowFramework.Register("FLD_START_DEBUG_SCRIPT", 2, () =>
             {
+                LogDebugFunc("FLD_START_DEBUG_SCRIPT called");
+
                 int majorID = flowApi.GetIntArg(0);
                 int minorID = flowApi.GetIntArg(1);
 
@@ -537,6 +578,8 @@ namespace p5r.enhance.cbt.reloaded
 
             flowFramework.Register("CALL_NAVI_DIALOGUE", 3, () =>
             {
+                LogDebugFunc("CALL_NAVI_DIALOGUE called");
+
                 int charID = flowApi.GetIntArg(0);
                 int expressionID = flowApi.GetIntArg(1);
                 int messageIndex = flowApi.GetIntArg(2);
@@ -555,6 +598,8 @@ namespace p5r.enhance.cbt.reloaded
 
             flowFramework.Register("GET_MAXBULLETS", 1, () =>
             {
+                LogDebugFunc("GET_MAXBULLETS called");
+
                 var partyMember = flowApi.GetIntArg(0);
 
                 bool isValid = partyMember >= 1 && partyMember <= 10;
@@ -574,11 +619,13 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<ushort>((nuint)(&PartyMember->numOfBullets), currentBullets);
 
                 return FlowStatus.SUCCESS;
-            }, 0x2500);
+            });
 
 
             flowFramework.Register("GET_BULLETS", 1, () =>
             {
+                LogDebugFunc("GET_BULLETS called");
+
                 var partyMember = flowApi.GetIntArg(0);
 
                 bool isValid = partyMember >= 1 && partyMember <= 10;
@@ -594,11 +641,13 @@ namespace p5r.enhance.cbt.reloaded
                 flowApi.SetReturnValue(currentBullets);
 
                 return FlowStatus.SUCCESS;
-            }, 0x2501);
+            });
 
 
             flowFramework.Register("SET_BULLETS", 2, () =>
             {
+                LogDebugFunc("SET_BULLETS called");
+
                 var partyMember = flowApi.GetIntArg(0);
                 var newBullets = (ushort)flowApi.GetIntArg(1);
 
@@ -612,11 +661,12 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<ushort>((nuint)(&PartyMember->numOfBullets), newBullets);
 
                 return FlowStatus.SUCCESS;
-            }, 0x2502);
+            });
 
 
             flowFramework.Register("GET_TACTIC", 1, () =>
             {
+                LogDebugFunc("GET_TACTIC called");
                 var partyMember = flowApi.GetIntArg(0);
 
                 bool isValid = partyMember >= 1 && partyMember <= 10;
@@ -632,11 +682,12 @@ namespace p5r.enhance.cbt.reloaded
                 flowApi.SetReturnValue(currentTactics);
 
                 return FlowStatus.SUCCESS;
-            }, 0x2503);
+            });
 
 
             flowFramework.Register("SET_TACTIC", 2, () =>
             {
+                LogDebugFunc("SET_TACTIC called");
                 var partyMember = flowApi.GetIntArg(0);
                 var newTactics = (ushort)flowApi.GetIntArg(1);
 
@@ -650,20 +701,11 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<ushort>((nuint)(&PartyMember->TacticsState), newTactics);
 
                 return FlowStatus.SUCCESS;
-            }, 0x2504);
-
-            flowFramework.Register("GET_PC_LEVEL", 0, () =>
-            {
-                datUnit* PartyMember = _gameFunctions.getDatUnitFromPlayerID((ushort)1);
-                var currLv = PartyMember->Joker_Lv;
-
-                flowApi.SetReturnValue(currLv);
-
-                return FlowStatus.SUCCESS;
-            }, 0x019e);
+            });
 
             flowFramework.Register("SET_UNIT_FLAGS", 3, () =>
             {
+                LogDebugFunc("SET_UNIT_FLAGS called");
                 int unitID = flowApi.GetIntArg(0);
                 var toggleFlag = flowApi.GetIntArg(1);
                 bool onOff = flowApi.GetIntArg(2) > 0;
@@ -673,20 +715,22 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<int>((nuint)(&currUnit->Flags), ToggleBit(currUnit->Flags, toggleFlag, onOff));
 
                 return FlowStatus.SUCCESS;
-            }, 0x2506);
+            });
 
             flowFramework.Register("GET_UNIT_FLAGS", 2, () =>
             {
+                LogDebugFunc("GET_UNIT_FLAGS called");
                 int unitID = flowApi.GetIntArg(0);
                 var toggleFlag = flowApi.GetIntArg(1);
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
                 int isSet = IsBitSet(currUnit->Flags, toggleFlag);
                 flowApi.SetReturnValue(isSet);
                 return FlowStatus.SUCCESS;
-            }, 0x2505);
+            });
 
             flowFramework.Register("SET_UNIT_ITEM_DROP_ITEM", 3, () =>
             {
+                LogDebugFunc("SET_UNIT_ITEM_DROP_ITEM called");
                 int unitID = flowApi.GetIntArg(0);
                 int ItemDropSlot = flowApi.GetIntArg(1);
                 int ItemID = flowApi.GetIntArg(2);
@@ -695,20 +739,22 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<short>((nuint)(&currUnit->ItemDrops[ItemDropSlot*2]), (short)ItemID);
 
                 return FlowStatus.SUCCESS;
-            }, 0x2506);
+            });
 
             flowFramework.Register("SET_UNIT_ITEM_DROP_PROBABILITY", 3, () =>
             {
+                LogDebugFunc("SET_UNIT_ITEM_DROP_PROBABILITY called");
                 int unitID = flowApi.GetIntArg(0);
                 int ItemDropSlot = flowApi.GetIntArg(1);
                 int itemProbability = flowApi.GetIntArg(2);
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
                 memory.Write<short>((nuint)(&currUnit->ItemDrops[ItemDropSlot * 2 + 1]), (short)itemProbability);
                 return FlowStatus.SUCCESS;
-            }, 0x2506);
+            });
 
             flowFramework.Register("GET_UNIT_ITEM_DROP_ITEM", 2, () =>
             {
+                LogDebugFunc("GET_UNIT_ITEM_DROP_ITEM called");
                 int unitID = flowApi.GetIntArg(0);
                 int ItemDropSlot = flowApi.GetIntArg(1);
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
@@ -716,40 +762,44 @@ namespace p5r.enhance.cbt.reloaded
                 int itemID = memory.Read<short>((nuint)(&currUnit->ItemDrops[ItemDropSlot * 2]));
                 flowApi.SetReturnValue(itemID);
                 return FlowStatus.SUCCESS;
-            }, 0x2506);
+            });
 
             flowFramework.Register("GET_UNIT_ITEM_DROP_PROBABILITY", 2, () =>
             {
+                LogDebugFunc("GET_UNIT_ITEM_DROP_PROBABILITY called");
                 int unitID = flowApi.GetIntArg(0);
                 int ItemDropSlot = flowApi.GetIntArg(1);
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
                 int itemProbability = memory.Read<short>((nuint)(&currUnit->ItemDrops[ItemDropSlot * 2 + 1]));
                 flowApi.SetReturnValue(itemProbability);
                 return FlowStatus.SUCCESS;
-            }, 0x2506);
+            });
 
             flowFramework.Register("SET_UNIT_EVT_ITEM", 3, () =>
             {
+                LogDebugFunc("SET_UNIT_EVT_ITEM called");
                 int unitID = flowApi.GetIntArg(0);
                 int ItemSlot = flowApi.GetIntArg(1);
                 int ItemID = flowApi.GetIntArg(2);
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
                 memory.Write<short>((nuint)(&currUnit->EvtItemDrop[ItemSlot]), (short)ItemID);
                 return FlowStatus.SUCCESS;
-            }, 0x2506);
+            });
 
             flowFramework.Register("GET_UNIT_EVT_ITEM", 2, () =>
             {
+                LogDebugFunc("GET_UNIT_EVT_ITEM called");
                 int unitID = flowApi.GetIntArg(0);
                 int ItemSlot = flowApi.GetIntArg(1);
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
                 int itemID = memory.Read<short>((nuint)(&currUnit->EvtItemDrop[ItemSlot]));
                 flowApi.SetReturnValue(itemID);
                 return FlowStatus.SUCCESS;
-            }, 0x2506);
+            });
 
             flowFramework.Register("SET_STATUS_EFFECT", 3, () =>
             {
+                LogDebugFunc("SET_STATUS_EFFECT called");
                 var partyMember = flowApi.GetIntArg(0);
                 var toggleFlag = flowApi.GetIntArg(1);
                 bool onOff = flowApi.GetIntArg(2) > 0;
@@ -764,12 +814,13 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<int>((nuint)(&PartyMember->StatusAilments), ToggleBit((int)PartyMember->StatusAilments, toggleFlag, onOff));
 
                 return FlowStatus.SUCCESS;
-            }, 0x2507);
+            });
 
             // starting reference point: https://github.com/DeathChaos25/ps3-ckit/blob/main/prx/modules/p5/EXFLW/EXFLW.c#L1432
 
             flowFramework.Register("SET_UNIT_ARCANA", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_ARCANA called");
                 int unitID = flowApi.GetIntArg(0);
                 byte arcana = (byte)flowApi.GetIntArg(1);
 
@@ -777,18 +828,20 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<byte>((nuint)(&currUnit->Arcana), arcana);
                 return FlowStatus.SUCCESS;
-            }, 0x2508);
+            });
 
             flowFramework.Register("GET_UNIT_ARCANA", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_ARCANA called");
                 int unitID = flowApi.GetIntArg(0);
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
                 flowApi.SetReturnValue(currUnit->Arcana);
                 return FlowStatus.SUCCESS;
-            }, 0x2509);
+            });
 
             flowFramework.Register("SET_UNIT_LEVEL", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_LEVEL called");
                 int unitID = flowApi.GetIntArg(0);
                 short tarLv = (short)flowApi.GetIntArg(1);
 
@@ -796,20 +849,22 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<short>((nuint)(&currUnit->UnitLv), tarLv);
                 return FlowStatus.SUCCESS;
-            }, 0x250A);
+            });
 
             flowFramework.Register("GET_UNIT_LEVEL", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_LEVEL called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->UnitLv);
                 return FlowStatus.SUCCESS;
-            }, 0x250B);
+            });
 
             flowFramework.Register("SET_UNIT_HP", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_HP called");
                 int unitID = flowApi.GetIntArg(0);
                 int targetHP = flowApi.GetIntArg(1);
 
@@ -817,10 +872,11 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<int>((nuint)(&currUnit->HP), targetHP);
                 return FlowStatus.SUCCESS;
-            }, 0x250C);
+            });
 
             flowFramework.Register("GET_UNIT_HP", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_HP called");
                 int unitID = flowApi.GetIntArg(0);
 
 
@@ -828,10 +884,11 @@ namespace p5r.enhance.cbt.reloaded
 
                 flowApi.SetReturnValue(currUnit->HP);
                 return FlowStatus.SUCCESS;
-            }, 0x250D);
+            });
 
             flowFramework.Register("SET_UNIT_SP", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_SP called");
                 int unitID = flowApi.GetIntArg(0);
                 int targetSP = flowApi.GetIntArg(1);
 
@@ -840,20 +897,22 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<int>((nuint)(&currUnit->SP), targetSP);
                 return FlowStatus.SUCCESS;
-            }, 0x250E);
+            });
 
             flowFramework.Register("GET_UNIT_SP", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_SP called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->SP);
                 return FlowStatus.SUCCESS;
-            }, 0x250F);
+            });
 
             flowFramework.Register("SET_UNIT_STATS", 3, () =>
             {
+                LogDebugFunc("SET_UNIT_STATS called");
                 int unitID = flowApi.GetIntArg(0);
                 int stat_type = flowApi.GetIntArg(1);
                 byte stat_value = (byte)flowApi.GetIntArg(2);
@@ -862,10 +921,11 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<byte>((nuint)(&currUnit->Stats[stat_type]), stat_value);
                 return FlowStatus.SUCCESS;
-            }, 0x2510);
+            });
 
             flowFramework.Register("GET_UNIT_STATS", 2, () =>
             {
+                LogDebugFunc("GET_UNIT_STATS called");
                 int unitID = flowApi.GetIntArg(0);
                 int stat_type = flowApi.GetIntArg(1);
 
@@ -873,10 +933,11 @@ namespace p5r.enhance.cbt.reloaded
 
                 flowApi.SetReturnValue(currUnit->Stats[stat_type]);
                 return FlowStatus.SUCCESS;
-            }, 0x2511);
+            });
 
             flowFramework.Register("SET_UNIT_SKILL", 3, () =>
             {
+                LogDebugFunc("SET_UNIT_SKILL called");
                 int unitID = flowApi.GetIntArg(0);
                 int skill_slot = flowApi.GetIntArg(1);
                 short skill_id = (short)flowApi.GetIntArg(2);
@@ -885,10 +946,11 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<short>((nuint)(&currUnit->BattleSkills[skill_slot]), skill_id);
                 return FlowStatus.SUCCESS;
-            }, 0x2512);
+            });
 
             flowFramework.Register("GET_UNIT_SKILL", 2, () =>
             {
+                LogDebugFunc("GET_UNIT_SKILL called");
                 int unitID = flowApi.GetIntArg(0);
                 int skill_slot = flowApi.GetIntArg(1);
 
@@ -896,10 +958,11 @@ namespace p5r.enhance.cbt.reloaded
 
                 flowApi.SetReturnValue(currUnit->BattleSkills[skill_slot]);
                 return FlowStatus.SUCCESS;
-            }, 0x2513);
+            });
 
             flowFramework.Register("SET_UNIT_REWARD_EXP", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_REWARD_EXP called");
                 int unitID = flowApi.GetIntArg(0);
                 short exp = (short)flowApi.GetIntArg(1);
 
@@ -907,20 +970,22 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<short>((nuint)(&currUnit->ExpReward), exp);
                 return FlowStatus.SUCCESS;
-            }, 0x2514);
+            });
 
             flowFramework.Register("GET_UNIT_REWARD_EXP", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_REWARD_EXP called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->ExpReward);
                 return FlowStatus.SUCCESS;
-            }, 0x2515);
+            });
 
             flowFramework.Register("SET_UNIT_REWARD_MONEY", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_REWARD_MONEY called");
                 int unitID = flowApi.GetIntArg(0);
                 int money = flowApi.GetIntArg(1);
 
@@ -928,20 +993,22 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<int>((nuint)(&currUnit->MoneyReward), money);
                 return FlowStatus.SUCCESS;
-            }, 0x2516);
+            });
 
             flowFramework.Register("GET_UNIT_REWARD_MONEY", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_REWARD_MONEY called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->MoneyReward);
                 return FlowStatus.SUCCESS;
-            }, 0x2517);
+            });
 
             flowFramework.Register("SET_UNIT_ATTACK_ELEMENT", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_ATTACK_ELEMENT called");
                 int unitID = flowApi.GetIntArg(0);
                 byte element = (byte)flowApi.GetIntArg(1);
 
@@ -949,20 +1016,22 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<byte>((nuint)(&currUnit->AtkAttribute), element);
                 return FlowStatus.SUCCESS;
-            }, 0x2518);
+            });
 
             flowFramework.Register("GET_UNIT_ATTACK_ELEMENT", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_ATTACK_ELEMENT called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->AtkAttribute);
                 return FlowStatus.SUCCESS;
-            }, 0x2519);
+            });
 
             flowFramework.Register("SET_UNIT_ATTACK_ACCURACY", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_ATTACK_ACCURACY called");
                 int unitID = flowApi.GetIntArg(0);
                 byte acc = (byte)flowApi.GetIntArg(1);
 
@@ -970,20 +1039,22 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<byte>((nuint)(&currUnit->AtkAccuracy), acc);
                 return FlowStatus.SUCCESS;
-            }, 0x251A);
+            });
 
             flowFramework.Register("GET_UNIT_ATTACK_ACCURACY", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_ATTACK_ACCURACY called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->AtkAccuracy);
                 return FlowStatus.SUCCESS;
-            }, 0x251B);
+            });
 
             flowFramework.Register("SET_UNIT_ATTACK_DAMAGE", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_ATTACK_DAMAGE called");
                 int unitID = flowApi.GetIntArg(0);
                 short dmg = (short)flowApi.GetIntArg(1);
 
@@ -991,74 +1062,82 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<short>((nuint)(&currUnit->AtkDamage), dmg);
                 return FlowStatus.SUCCESS;
-            }, 0x251C);
+            });
 
             flowFramework.Register("GET_UNIT_ATTACK_DAMAGE", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_ATTACK_DAMAGE called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = _gameFunctions.GetUnitTBL_Segment0_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->AtkDamage);
                 return FlowStatus.SUCCESS;
-            }, 0x251D);
+            });
 
             flowFramework.Register("SET_UNIT_PERSONA_MASK", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_PERSONA_MASK called");
                 int unitID = flowApi.GetIntArg(0);
                 short personaID = (short)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(UNIT_TBL_Section4_PTR + (long)(unitID * UNIT_TBL_Section4_EntrySize));
                 memory.Write<short>(targetPTR, personaID);
                 return FlowStatus.SUCCESS;
-            }, 0x251E);
+            });
 
             flowFramework.Register("GET_UNIT_PERSONA_MASK", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_PERSONA_MASK called");
                 int unitID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(UNIT_TBL_Section4_PTR + (long)(unitID * UNIT_TBL_Section4_EntrySize));
                 short personaID = memory.Read<short>(targetPTR);
                 flowApi.SetReturnValue(personaID);
                 return FlowStatus.SUCCESS;
-            }, 0x251F);
+            });
 
             flowFramework.Register("SET_UNIT_MODEL", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_MODEL called");
                 int unitID = flowApi.GetIntArg(0);
                 byte modelID = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(UNIT_TBL_Section4_PTR + (long)(unitID * UNIT_TBL_Section4_EntrySize + 2));
                 memory.Write<byte>(targetPTR, modelID);
                 return FlowStatus.SUCCESS;
-            }, 0x2520);
+            });
 
             flowFramework.Register("GET_UNIT_MODEL", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_MODEL called");
                 int unitID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(UNIT_TBL_Section4_PTR + (long)(unitID * UNIT_TBL_Section4_EntrySize + 2));
                 byte modelID = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(modelID);
                 return FlowStatus.SUCCESS;
-            }, 0x2521);
+            });
 
             flowFramework.Register("SET_UNIT_AI", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_AI called");
                 int unitID = flowApi.GetIntArg(0);
                 short ai_ID = (short)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(ELSAI_TBL_Section0_PTR + (long)(unitID * ELSAI_TBL_Section0_EntrySize + 2));
                 memory.Write<short>(targetPTR, ai_ID);
                 return FlowStatus.SUCCESS;
-            }, 0x2522);
+            });
 
             flowFramework.Register("GET_UNIT_AI", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_AI called");
                 int unitID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(ELSAI_TBL_Section0_PTR + (long)(unitID * ELSAI_TBL_Section0_EntrySize + 2));
                 short ai_ID = memory.Read<short>(targetPTR);
                 flowApi.SetReturnValue(ai_ID);
                 return FlowStatus.SUCCESS;
-            }, 0x2523);
+            });
 
             flowFramework.Register("SET_ENCOUNT_ENEMY", 3, () =>
             {
+                LogDebugFunc("SET_ENCOUNT_ENEMY called");
                 int encount_ID = flowApi.GetIntArg(0);
                 int enemySlot = flowApi.GetIntArg(1);
                 int enemyID = flowApi.GetIntArg(2);
@@ -1067,10 +1146,11 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<ushort>((nuint)(&currEnc->BattleUnitID[enemySlot]), (ushort)enemyID);
 
                 return FlowStatus.SUCCESS;
-            }, 0x2524);
+            });
 
             flowFramework.Register("GET_ENCOUNT_ENEMY", 2, () =>
             {
+                LogDebugFunc("GET_ENCOUNT_ENEMY called");
                 int encount_ID = flowApi.GetIntArg(0);
                 int enemySlot = flowApi.GetIntArg(1);
 
@@ -1078,10 +1158,11 @@ namespace p5r.enhance.cbt.reloaded
 
                 flowApi.SetReturnValue(memory.Read<ushort>((nuint)(&currEnc->BattleUnitID[enemySlot])));
                 return FlowStatus.SUCCESS;
-            }, 0x2525);
+            });
 
             flowFramework.Register("SET_ENCOUNT_FIELD", 3, () =>
             {
+                LogDebugFunc("SET_ENCOUNT_FIELD called");
                 int encount_ID = flowApi.GetIntArg(0);
                 int majorID = flowApi.GetIntArg(1);
                 int minorID = flowApi.GetIntArg(2);
@@ -1091,30 +1172,33 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<ushort>((nuint)(&currEnc->RoomID), (ushort)minorID);
 
                 return FlowStatus.SUCCESS;
-            }, 0x2526);
+            });
 
             flowFramework.Register("GET_ENCOUNT_FIELD_MAJOR", 1, () =>
             {
+                LogDebugFunc("GET_ENCOUNT_FIELD_MAJOR called");
                 int encount_ID = flowApi.GetIntArg(0);
 
                 encounterIDTBL* currEnc = _gameFunctions.GetEncounterTBLData(encount_ID);
 
                 flowApi.SetReturnValue(memory.Read<ushort>((nuint)(&currEnc->FieldID)));
                 return FlowStatus.SUCCESS;
-            }, 0x2527);
+            });
 
             flowFramework.Register("GET_ENCOUNT_FIELD_MINOR", 1, () =>
             {
+                LogDebugFunc("GET_ENCOUNT_FIELD_MINOR called");
                 int encount_ID = flowApi.GetIntArg(0);
 
                 encounterIDTBL* currEnc = _gameFunctions.GetEncounterTBLData(encount_ID);
 
                 flowApi.SetReturnValue(memory.Read<ushort>((nuint)(&currEnc->RoomID)));
                 return FlowStatus.SUCCESS;
-            }, 0x2528);
+            });
 
             flowFramework.Register("SET_ENCOUNT_BGM", 2, () =>
             {
+                LogDebugFunc("SET_ENCOUNT_BGM called");
                 int encount_ID = flowApi.GetIntArg(0);
                 int bgmID = flowApi.GetIntArg(1);
 
@@ -1122,37 +1206,40 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<ushort>((nuint)(&currEnc->BGMID), (ushort)bgmID);
 
                 return FlowStatus.SUCCESS;
-            }, 0x2529);
+            });
 
             flowFramework.Register("GET_ENCOUNT_BGM", 1, () =>
             {
+                LogDebugFunc("GET_ENCOUNT_BGM called");
                 int encount_ID = flowApi.GetIntArg(0);
 
                 encounterIDTBL* currEnc = _gameFunctions.GetEncounterTBLData(encount_ID);
 
                 flowApi.SetReturnValue(memory.Read<ushort>((nuint)(&currEnc->BGMID)));
                 return FlowStatus.SUCCESS;
-            }, 0x252A);
+            });
 
             flowFramework.Register("SET_UNIT_AFFINITY", 3, () =>
             {
+                LogDebugFunc("SET_UNIT_AFFINITY called");
                 int unitID = flowApi.GetIntArg(0);
                 int affinity_slot = flowApi.GetIntArg(1);
                 short new_affinity = (short)flowApi.GetIntArg(2);
                 nuint targetPTR = (nuint)(UNIT_TBL_Section1_PTR + (long)(unitID * UNIT_TBL_Section1_EntrySize) + (long)(affinity_slot * 2));
                 memory.Write<short>(targetPTR, new_affinity);
                 return FlowStatus.SUCCESS;
-            }, 0x252B);
+            });
 
             flowFramework.Register("GET_UNIT_AFFINITY", 2, () =>
             {
+                LogDebugFunc("GET_UNIT_AFFINITY called");
                 int unitID = flowApi.GetIntArg(0);
                 int affinity_slot = flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(UNIT_TBL_Section1_PTR + (long)(unitID * UNIT_TBL_Section1_EntrySize) + (long)(affinity_slot * 2));
                 short affinity_value = memory.Read<short>(targetPTR);
                 flowApi.SetReturnValue(affinity_value);
                 return FlowStatus.SUCCESS;
-            }, 0x252C);
+            });
 
             //
             // reference: https://github.com/tge-was-taken/010-Editor-Templates/blob/master/templates/p5r_tbl.bt
@@ -1160,296 +1247,329 @@ namespace p5r.enhance.cbt.reloaded
 
             flowFramework.Register("SET_SKILL_ELEMENT", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_ELEMENT called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte element = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section0_PTR + (long)(skill_ID * SKILL_TBL_Section0_EntrySize));
                 memory.Write<byte>(targetPTR, element);
                 return FlowStatus.SUCCESS;
-            }, 0x252D);
+            });
 
             flowFramework.Register("GET_SKILL_ELEMENT", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_ELEMENT called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section0_PTR + (long)(skill_ID * SKILL_TBL_Section0_EntrySize));
                 byte element = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(element);
                 return FlowStatus.SUCCESS;
-            }, 0x252E);
+            });
 
             flowFramework.Register("SET_SKILL_PASSIVE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_PASSIVE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte isPassive = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section0_PTR + (long)(skill_ID * SKILL_TBL_Section0_EntrySize + 1));
                 memory.Write<byte>(targetPTR, isPassive);
                 return FlowStatus.SUCCESS;
-            }, 0x252F);
+            });
 
             flowFramework.Register("GET_SKILL_PASSIVE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_PASSIVE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section0_PTR + (long)(skill_ID * SKILL_TBL_Section0_EntrySize + 1));
                 byte isPassive = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(isPassive);
                 return FlowStatus.SUCCESS;
-            }, 0x2530);
+            });
 
             flowFramework.Register("SET_SKILL_INHERITABLE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_INHERITABLE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte isInherit = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section0_PTR + (long)(skill_ID * SKILL_TBL_Section0_EntrySize + 2));
                 memory.Write<byte>(targetPTR, isInherit);
                 return FlowStatus.SUCCESS;
-            }, 0x2531);
+            });
 
             flowFramework.Register("GET_SKILL_INHERITABLE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_INHERITABLE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section0_PTR + (long)(skill_ID * SKILL_TBL_Section0_EntrySize + 2));
                 byte isInherit = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(isInherit);
                 return FlowStatus.SUCCESS;
-            }, 0x2532);
+            });
 
             flowFramework.Register("SET_SKILL_AREA_USABLE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_AREA_USABLE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte area_val = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 5));
                 memory.Write<byte>(targetPTR, area_val);
                 return FlowStatus.SUCCESS;
-            }, 0x2533);
+            });
 
             flowFramework.Register("GET_SKILL_AREA_USABLE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_AREA_USABLE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 5));
                 byte area_val = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(area_val);
                 return FlowStatus.SUCCESS;
-            }, 0x2534);
+            });
 
             flowFramework.Register("SET_SKILL_DAMAGE_STAT", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_DAMAGE_STAT called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte stat_type = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 6));
                 memory.Write<byte>(targetPTR, stat_type);
                 return FlowStatus.SUCCESS;
-            }, 0x2535);
+            });
 
             flowFramework.Register("GET_SKILL_DAMAGE_STAT", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_DAMAGE_STAT called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 6));
                 byte stat_type = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(stat_type);
                 return FlowStatus.SUCCESS;
-            }, 0x2536);
+            });
 
             flowFramework.Register("SET_SKILL_COST_TYPE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_COST_TYPE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte cost_type = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 7));
                 memory.Write<byte>(targetPTR, cost_type);
                 return FlowStatus.SUCCESS;
-            }, 0x2537);
+            });
 
             flowFramework.Register("GET_SKILL_COST_TYPE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_COST_TYPE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 7));
                 byte cost_type = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(cost_type);
                 return FlowStatus.SUCCESS;
-            }, 0x2538);
+            });
 
             flowFramework.Register("SET_SKILL_COST", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_COST called");
                 int skill_ID = flowApi.GetIntArg(0);
                 short cost = (short)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 8));
                 memory.Write<short>(targetPTR, cost);
                 return FlowStatus.SUCCESS;
-            }, 0x2539);
+            });
 
             flowFramework.Register("GET_SKILL_COST", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_COST called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 8));
                 short cost = memory.Read<short>(targetPTR);
                 flowApi.SetReturnValue(cost);
                 return FlowStatus.SUCCESS;
-            }, 0x253A);
+            });
 
             flowFramework.Register("SET_SKILL_TARGETING_TYPE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_TARGETING_TYPE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte tar_type = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 12));
                 memory.Write<byte>(targetPTR, tar_type);
                 return FlowStatus.SUCCESS;
-            }, 0x253B);
+            });
 
             flowFramework.Register("GET_SKILL_TARGETING_TYPE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_TARGETING_TYPE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 12));
                 byte tar_type = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(tar_type);
                 return FlowStatus.SUCCESS;
-            }, 0x253C);
+            });
 
             flowFramework.Register("SET_SKILL_TARGETS", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_TARGETS called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte tar = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 13));
                 memory.Write<byte>(targetPTR, tar);
                 return FlowStatus.SUCCESS;
-            }, 0x253D);
+            });
 
             flowFramework.Register("GET_SKILL_TARGETS", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_TARGETS called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 13));
                 byte tar = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(tar);
                 return FlowStatus.SUCCESS;
-            }, 0x253E);
+            });
 
             flowFramework.Register("SET_SKILL_ACCURACY", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_ACCURACY called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte acc = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 20));
                 memory.Write<byte>(targetPTR, acc);
                 return FlowStatus.SUCCESS;
-            }, 0x253F);
+            });
 
             flowFramework.Register("GET_SKILL_ACCURACY", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_ACCURACY called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 20));
                 byte acc = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(acc);
                 return FlowStatus.SUCCESS;
-            }, 0x2540);
+            });
 
             flowFramework.Register("SET_SKILL_MIN_HITS", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_MIN_HITS called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte min_hits_amt = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 21));
                 memory.Write<byte>(targetPTR, min_hits_amt);
                 return FlowStatus.SUCCESS;
-            }, 0x2541);
+            });
 
             flowFramework.Register("GET_SKILL_MIN_HITS", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_MIN_HITS called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 21));
                 byte min_hits_amt = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(min_hits_amt);
                 return FlowStatus.SUCCESS;
-            }, 0x2542);
+            });
 
             flowFramework.Register("SET_SKILL_MAX_HITS", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_MAX_HITS called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte max_hits_amt = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 22));
                 memory.Write<byte>(targetPTR, max_hits_amt);
                 return FlowStatus.SUCCESS;
-            }, 0x2543);
+            });
 
             flowFramework.Register("GET_SKILL_MAX_HITS", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_MAX_HITS called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 22));
                 byte max_hits_amt = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(max_hits_amt);
                 return FlowStatus.SUCCESS;
-            }, 0x2544);
+            });
 
             flowFramework.Register("SET_SKILL_DAMAGE_HEALING_TYPE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_DAMAGE_HEALING_TYPE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte val = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 23));
                 memory.Write<byte>(targetPTR, val);
                 return FlowStatus.SUCCESS;
-            }, 0x2545);
+            });
 
             flowFramework.Register("GET_SKILL_DAMAGE_HEALING_TYPE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_DAMAGE_HEALING_TYPE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 23));
                 byte val = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(val);
                 return FlowStatus.SUCCESS;
-            }, 0x2546);
+            });
 
             flowFramework.Register("SET_SKILL_DAMAGE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_DAMAGE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 short dmg = (short)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 24));
                 memory.Write<short>(targetPTR, dmg);
                 return FlowStatus.SUCCESS;
-            }, 0x2547);
+            });
 
             flowFramework.Register("GET_SKILL_DAMAGE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_DAMAGE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 24));
                 short dmg = memory.Read<short>(targetPTR);
                 flowApi.SetReturnValue(dmg);
                 return FlowStatus.SUCCESS;
-            }, 0x2548);
+            });
 
             flowFramework.Register("SET_SKILL_DEPLETE_SP", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_DEPLETE_SP called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte SP = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 26));
                 memory.Write<byte>(targetPTR, SP);
                 return FlowStatus.SUCCESS;
-            }, 0x2549);
+            });
 
             flowFramework.Register("GET_SKILL_DEPLETE_SP", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_DEPLETE_SP called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 26));
                 byte SP = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(SP);
                 return FlowStatus.SUCCESS;
-            }, 0x254A);
+            });
 
             flowFramework.Register("SET_SKILL_CRIT_CHANCE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_CRIT_CHANCE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte crit_chance = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 45));
                 memory.Write<byte>(targetPTR, crit_chance);
                 return FlowStatus.SUCCESS;
-            }, 0x254B);
+            });
 
             flowFramework.Register("GET_SKILL_CRIT_CHANCE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_CRIT_CHANCE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 45));
                 byte crit_chance = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(crit_chance);
                 return FlowStatus.SUCCESS;
-            }, 0x254C);
+            });
 
 
             // https://i.imgur.com/Cm13zBQ.gif my reaction to this function
             flowFramework.Register("UNIT_CLEAR_ANALYSIS", 1, () =>
             {
+                LogDebugFunc("UNIT_CLEAR_ANALYSIS called");
                 int enemy_ID = flowApi.GetIntArg(0);
 
                 for (int bitIndex = 0; bitIndex < 11; bitIndex++)
@@ -1458,10 +1578,11 @@ namespace p5r.enhance.cbt.reloaded
                 }
 
                 return FlowStatus.SUCCESS;
-            }, 0x254D);
+            });
 
             flowFramework.Register("SET_ENCOUNT_FLAG", 3, () =>
             {
+                LogDebugFunc("SET_ENCOUNT_FLAG called");
                 int encount_ID = flowApi.GetIntArg(0);
                 int toggleFlag = flowApi.GetIntArg(1);
                 bool onOff = flowApi.GetIntArg(2) > 0;
@@ -1470,10 +1591,11 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<int>((nuint)(&currEnc->flags), ToggleBit((int)currEnc->flags, toggleFlag, onOff));
                 return FlowStatus.SUCCESS;
-            }, 0x254E);
+            });
 
             flowFramework.Register("GET_ENCOUNT_FLAG", 2, () =>
             {
+                LogDebugFunc("GET_ENCOUNT_FLAG called");
                 int encount_ID = flowApi.GetIntArg(0);
                 int toggleFlag = flowApi.GetIntArg(1);
 
@@ -1483,10 +1605,11 @@ namespace p5r.enhance.cbt.reloaded
 
                 flowApi.SetReturnValue(IsBitSet(flags, toggleFlag));
                 return FlowStatus.SUCCESS;
-            }, 0x254F);
+            });
 
             flowFramework.Register("SET_BATTLE_FLAG", 3, () =>
             {
+                LogDebugFunc("SET_BATTLE_FLAG called");
                 var partyMember = flowApi.GetIntArg(0);
                 var toggleFlag = flowApi.GetIntArg(1);
                 bool onOff = flowApi.GetIntArg(2) > 0;
@@ -1505,6 +1628,7 @@ namespace p5r.enhance.cbt.reloaded
 
             flowFramework.Register("GET_BATTLE_FLAG", 2, () =>
             {
+                LogDebugFunc("GET_BATTLE_FLAG called");
                 var partyMember = flowApi.GetIntArg(0);
                 var toggleFlag = flowApi.GetIntArg(1);
                 bool isValid = partyMember >= 1 && partyMember <= 10;
@@ -1521,60 +1645,67 @@ namespace p5r.enhance.cbt.reloaded
 
             flowFramework.Register("SET_SKILL_EFFECT_TYPE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_EFFECT_TYPE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte eff_type = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 30));
                 memory.Write<byte>(targetPTR, eff_type);
                 return FlowStatus.SUCCESS;
-            }, 0x2552);
+            });
 
             flowFramework.Register("GET_SKILL_EFFECT_TYPE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_EFFECT_TYPE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 30));
                 byte eff_type = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(eff_type);
                 return FlowStatus.SUCCESS;
-            }, 0x2553);
+            });
 
             flowFramework.Register("SET_SKILL_EFFECT_CHANCE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_EFFECT_CHANCE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte eff_chance = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 31));
                 memory.Write<byte>(targetPTR, eff_chance);
                 return FlowStatus.SUCCESS;
-            }, 0x2554);
+            });
 
             flowFramework.Register("GET_SKILL_EFFECT_CHANCE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_EFFECT_CHANCE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 31));
                 byte eff_chance = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(eff_chance);
                 return FlowStatus.SUCCESS;
-            }, 0x2555);
+            });
 
             flowFramework.Register("SET_SKILL_EFFECT_EXTRA", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_EFFECT_EXTRA called");
                 int skill_ID = flowApi.GetIntArg(0);
                 byte eff_duration = (byte)flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 44));
                 memory.Write<byte>(targetPTR, eff_duration);
                 return FlowStatus.SUCCESS;
-            }, 0x2556);
+            });
 
             flowFramework.Register("GET_SKILL_EFFECT_EXTRA", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_EFFECT_EXTRA called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 44));
                 byte eff_duration = memory.Read<byte>(targetPTR);
                 flowApi.SetReturnValue(eff_duration);
                 return FlowStatus.SUCCESS;
-            }, 0x2557);
+            });
 
             flowFramework.Register("SET_SKILL_EFFECT", 3, () =>
             {
+                LogDebugFunc("SET_SKILL_EFFECT called");
                 int skill_ID = flowApi.GetIntArg(0);
                 var toggleFlag = flowApi.GetIntArg(1);
                 bool onOff = flowApi.GetIntArg(2) > 0;
@@ -1583,20 +1714,22 @@ namespace p5r.enhance.cbt.reloaded
                 long eff_bitfield = memory.Read<long>(targetPTR);
                 memory.Write<long>(targetPTR, ToggleBit(eff_bitfield, toggleFlag, onOff));
                 return FlowStatus.SUCCESS;
-            }, 0x2558);
+            });
 
             flowFramework.Register("GET_SKILL_EFFECT", 2, () =>
             {
+                LogDebugFunc("GET_SKILL_EFFECT called");
                 int skill_ID = flowApi.GetIntArg(0);
                 var toggleFlag = flowApi.GetIntArg(1);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 32));
                 long eff_bitfield = memory.Read<long>(targetPTR);
                 flowApi.SetReturnValue(IsBitSet(eff_bitfield, toggleFlag));
                 return FlowStatus.SUCCESS;
-            }, 0x2559);
+            });
 
             flowFramework.Register("AI_SET_FLAG", 2, () =>
             {
+                LogDebugFunc("AI_SET_FLAG called");
                 bool isValid = (nint)GetDatUnitFromCurrentAI() > 0;
                 if (!isValid)
                 {
@@ -1610,10 +1743,11 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<int>((nuint)(&currEnemy->Flags), ToggleBit((int)currEnemy->Flags, toggleFlag, onOff));
 
                 return FlowStatus.SUCCESS;
-            }, 0x255A);
+            });
 
             flowFramework.Register("AI_GET_FLAG", 1, () =>
             {
+                LogDebugFunc("AI_GET_FLAG called");
                 bool isValid = (nint)GetDatUnitFromCurrentAI() > 0;
                 if (!isValid)
                 {
@@ -1625,10 +1759,11 @@ namespace p5r.enhance.cbt.reloaded
                 int flags = (int)currEnemy->Flags;
                 flowApi.SetReturnValue(IsBitSet(flags, toggleFlag));
                 return FlowStatus.SUCCESS;
-            }, 0x255B);
+            });
 
             flowFramework.Register("AI_SET_LV", 1, () =>
             {
+                LogDebugFunc("AI_SET_LV called");
                 bool isValid = (nint)GetDatUnitFromCurrentAI() > 0;
                 if (!isValid)
                 {
@@ -1640,10 +1775,11 @@ namespace p5r.enhance.cbt.reloaded
                 memory.Write<ushort>((nuint)(&currEnemy->Joker_Lv), targetLV);
 
                 return FlowStatus.SUCCESS;
-            }, 0x255C);
+            });
 
             flowFramework.Register("AI_GET_LV", 0, () =>
             {
+                LogDebugFunc("AI_GET_LV called");
                 bool isValid = (nint)GetDatUnitFromCurrentAI() > 0;
                 if (!isValid)
                 {
@@ -1654,10 +1790,11 @@ namespace p5r.enhance.cbt.reloaded
                 ushort lv = memory.Read<ushort>((nuint)(&currEnemy->Joker_Lv));
                 flowApi.SetReturnValue(lv);
                 return FlowStatus.SUCCESS;
-            }, 0x255D);
+            });
 
             flowFramework.Register("SET_SKILL_JYOKYO_MESSAGE", 2, () =>
             {
+                LogDebugFunc("SET_SKILL_JYOKYO_MESSAGE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 short messID = (short)flowApi.GetIntArg(1);
 
@@ -1665,19 +1802,21 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<short>(targetPTR, messID);
                 return FlowStatus.SUCCESS;
-            }, 0x255E);
+            });
 
             flowFramework.Register("GET_SKILL_JYOKYO_MESSAGE", 1, () =>
             {
+                LogDebugFunc("GET_SKILL_JYOKYO_MESSAGE called");
                 int skill_ID = flowApi.GetIntArg(0);
                 nuint targetPTR = (nuint)(SKILL_TBL_Section1_PTR + (long)(skill_ID * SKILL_TBL_Section1_EntrySize + 42)); // 0x2A
                 short messID = memory.Read<short>(targetPTR);
                 flowApi.SetReturnValue(messID);
                 return FlowStatus.SUCCESS;
-            }, 0x255F);
+            });
 
             flowFramework.Register("SET_UNIT_VOICE_ID", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_VOICE_ID called");
                 int unitID = flowApi.GetIntArg(0);
                 byte voiceID = (byte)flowApi.GetIntArg(1);
 
@@ -1685,20 +1824,22 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<byte>((nuint)(&currUnit->VoiceID), voiceID);
                 return FlowStatus.SUCCESS;
-            }, 0x2560);
+            });
 
             flowFramework.Register("GET_UNIT_VOICE_ID", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_VOICE_ID called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = GetUnitTBL_Segment3_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->VoiceID);
                 return FlowStatus.SUCCESS;
-            }, 0x2561);
+            });
 
             flowFramework.Register("SET_UNIT_TALK_PERSONALITY", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_TALK_PERSONALITY called");
                 int unitID = flowApi.GetIntArg(0);
                 byte talktype = (byte)flowApi.GetIntArg(1);
 
@@ -1706,20 +1847,22 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<byte>((nuint)(&currUnit->TALK_PERSON), talktype);
                 return FlowStatus.SUCCESS;
-            }, 0x2562);
+            });
 
             flowFramework.Register("GET_UNIT_TALK_PERSONALITY", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_TALK_PERSONALITY called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = GetUnitTBL_Segment3_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->TALK_PERSON);
                 return FlowStatus.SUCCESS;
-            }, 0x2563);
+            });
 
             flowFramework.Register("SET_UNIT_VOICE_ABC", 2, () =>
             {
+                LogDebugFunc("SET_UNIT_VOICE_ABC called");
                 int unitID = flowApi.GetIntArg(0);
                 byte abc = (byte)flowApi.GetIntArg(1);
 
@@ -1727,17 +1870,18 @@ namespace p5r.enhance.cbt.reloaded
 
                 memory.Write<byte>((nuint)(&currUnit->VoicePackABC), abc);
                 return FlowStatus.SUCCESS;
-            }, 0x2564);
+            });
 
             flowFramework.Register("GET_UNIT_VOICE_ABC", 1, () =>
             {
+                LogDebugFunc("GET_UNIT_VOICE_ABC called");
                 int unitID = flowApi.GetIntArg(0);
 
                 var currUnit = GetUnitTBL_Segment3_Entry(unitID);
 
                 flowApi.SetReturnValue(currUnit->VoicePackABC);
                 return FlowStatus.SUCCESS;
-            }, 0x2565);
+            });
         }
 
         public static unsafe int HookCalendarTransPlayKnifeSfx(CalendarTransStruct* a1)
@@ -1976,6 +2120,79 @@ namespace p5r.enhance.cbt.reloaded
             _hookCombineColorBytes.OriginalFunction(a1, a2, a3);
         }
 
+        public unsafe bool AreBattleUnitsDead(Participate* a1)
+        {
+            bool jokerDead = isDatUnitDead(1);
+            bool anyPartyAlive = !isDatUnitDead(_gameFunctions.GetPlayerIDFromPartySlot(1)) ||
+                                 !isDatUnitDead(_gameFunctions.GetPlayerIDFromPartySlot(2)) ||
+                                 !isDatUnitDead(_gameFunctions.GetPlayerIDFromPartySlot(3));
+
+            bool result = _hookAreBattleUnitsDead.OriginalFunction(a1);
+
+            if (isCurrentParticipateFromEnemy(a1))
+            {
+                if (GetNumberOfEnemyUnitsAlive(a1) == 0)
+                {
+                    if (jokerDead)
+                    {
+                        CheckJokerDeadAndRevive();
+                    }
+                    return true;
+                }
+            }
+            else
+            {
+                if (jokerDead)
+                {
+                    if (anyPartyAlive)
+                    {
+                        result = false;
+                    }
+                    else
+                    {
+                        result = true;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        public unsafe nint MarukiDetox(Participate* a1, nint a2)
+        {
+            nint result = _hookMarukiDetox.OriginalFunction(a1, a2);
+            Log($"{GetNumberOfEnemyUnitsAlive(a1)} enemies alive in current encounter");
+            return result;
+        }
+
+        public nint PlayerEscape(nint a1, nint a2)
+        {
+            CheckJokerDeadAndRevive();
+
+            return _hookPlayerEscape.OriginalFunction(a1, a2);
+        }
+
+
+        static unsafe bool isDatUnitDead(ushort unitID)
+        {
+            if (unitID == 0) return true; // Invalid unit ID
+
+            datUnit* unit = _gameFunctions.getDatUnitFromPlayerID(unitID);
+
+            if (unit->currentHP <= 0 || IsBitSet(unit->StatusAilments, 19) > 0) return true;
+            else return false;
+        }
+
+        public void CheckJokerDeadAndRevive()
+        {
+            var Joker = _gameFunctions.getDatUnitFromPlayerID(1);
+            if (Joker->currentHP == 0)
+            {
+                Joker->currentHP = 1;
+                Joker->StatusAilments = ToggleBit(Joker->StatusAilments, 19, false); // Clear the "Dead" bit
+            }
+        }
+
         static uint ByteswapUlong(uint value)
         {
             return ((value & 0x000000FF) << 24) |
@@ -2059,6 +2276,167 @@ namespace p5r.enhance.cbt.reloaded
             datUnit* currEnemy = currAI->StructD_ptr->nextPTR->datUnitPtr;
             // LogNoPrefix($"datUnit PTR for Current enemy is 0x{(nint)(&currEnemy):X8}\nEnemy ID / Level -> {currEnemy->unitID} / {currEnemy->Joker_Lv} \nHP/SP -> {currEnemy->currentHP}/{currEnemy->currentSP} \ndatUnit Flags -> 0x{currEnemy->Flags:X8}");
             return currEnemy;
+        }
+
+        public unsafe void ProcessEnemyUnits(Participate* a1)
+        {
+            if (a1 == null)
+            {
+                Log("Error: Participate pointer is null");
+                return;
+            }
+
+            if (a1->field40.ptrToAI == null)
+            {
+                Log("Error: ptrToAI is null");
+                return;
+            }
+
+            if (a1->field40.ptrToAI->PtrToPackage == null)
+            {
+                Log("Error: PtrToPackage is null");
+                return;
+            }
+
+            PointerListgfw__SmartPointer_btl__Action* enemyUnits =
+                &a1->field40.ptrToAI->PtrToPackage->enemyUnits;
+
+            if (enemyUnits->first == null)
+            {
+                Log("No enemy units found in list");
+                return;
+            }
+
+            PointerListEntry_gfw_SmartPointer_btlAction* current = enemyUnits->first;
+            int unitCount = 0;
+
+            while (current != null)
+            {
+                unitCount++;
+                Log($"\nProcessing enemy unit #{unitCount}");
+
+                if (&current->btlAction == null)
+                {
+                    LogNoPrefix("  Error: btlAction pointer is null");
+                    current = current->next;
+                    continue;
+                }
+
+                SmartPointer_btl__Action* action = &current->btlAction;
+
+                if (action->participatePtr == null)
+                {
+                    LogNoPrefix("  Error: participatePtr is null");
+                    current = current->next;
+                    continue;
+                }
+
+                Participate* participate = action->participatePtr;
+
+                if (&participate->field18 == null)
+                {
+                    LogNoPrefix("  Error: field18 pointer is null");
+                    current = current->next;
+                    continue;
+                }
+
+                SmartPointer_btl__Unit* unitPtr = &participate->field18;
+
+                if (unitPtr->field18 == null)
+                {
+                    LogNoPrefix("  Error: Unit pointer is null");
+                    current = current->next;
+                    continue;
+                }
+
+                Unit* unit = unitPtr->field18;
+
+                if (unit->datUnitPtr == null)
+                {
+                    LogNoPrefix("  Error: datUnitPtr is null");
+                    current = current->next;
+                    continue;
+                }
+
+                datUnit* datUnit = unit->datUnitPtr;
+
+                LogNoPrefix($"  Unit Type: {datUnit->unitType}");
+                LogNoPrefix($"  Unit ID: {datUnit->unitID}");
+
+                current = current->next;
+            }
+
+            Log($"Finished processing {unitCount} enemy units");
+        }
+
+        public int GetNumberOfEnemyUnitsAlive(Participate* a1)
+        {
+            if (a1 == null || a1->field40.ptrToAI == null || a1->field40.ptrToAI->PtrToPackage == null)
+            {
+                Log("Error: Participate or AI package is null");
+                return -1;
+            }
+            PointerListgfw__SmartPointer_btl__Action* enemyUnits = &a1->field40.ptrToAI->PtrToPackage->enemyUnits;
+            if (enemyUnits->first == null)
+            {
+                Log("No enemy units found in list");
+                return -1;
+            }
+            PointerListEntry_gfw_SmartPointer_btlAction* current = enemyUnits->first;
+            int aliveCount = 0;
+            while (current != null)
+            {
+                SmartPointer_btl__Action* action = &current->btlAction;
+                if (action->participatePtr != null && action->participatePtr->field18.field18 != null)
+                {
+                    datUnit* datUnit = action->participatePtr->field18.field18->datUnitPtr;
+                    if (datUnit != null && datUnit->currentHP > 0 && IsBitSet(datUnit->StatusAilments, 19) == 0)
+                    {
+                        aliveCount++;
+                    }
+                }
+                current = current->next;
+            }
+            return aliveCount;
+        }
+
+        public unsafe datUnit* GetDatUnitOfTypeAndIDFromParticipate(Participate* a1, int unitType, int unitID)
+        {
+            if (a1 == null || a1->field40.ptrToAI == null || a1->field40.ptrToAI->PtrToPackage == null)
+            {
+                return null;
+            }
+            PointerListgfw__SmartPointer_btl__Action* allUnits = &a1->field40.ptrToAI->PtrToPackage->allUnits;
+            if (allUnits->first == null)
+            {
+                return null;
+            }
+            PointerListEntry_gfw_SmartPointer_btlAction* current = allUnits->first;
+
+            while (current != null)
+            {
+                SmartPointer_btl__Action* action = &current->btlAction;
+                if (action->participatePtr != null && action->participatePtr->field18.field18 != null)
+                {
+                    datUnit* datUnit = action->participatePtr->field18.field18->datUnitPtr;
+                    if (datUnit != null && datUnit->unitType == unitType && datUnit->unitID == unitID)
+                    {
+                        return datUnit;
+                    }
+                }
+                current = current->next;
+            }
+            return null;
+        }
+
+        public unsafe bool isCurrentParticipateFromEnemy(Participate* a1)
+        {
+            if (a1 == null || a1->field18.field18 == null || a1->field18.field18->datUnitPtr == null)
+            {
+                return false;
+            }
+            
+            return a1->field18.field18->datUnitPtr->unitType == 2;
         }
 
 

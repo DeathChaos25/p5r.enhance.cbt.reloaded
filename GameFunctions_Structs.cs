@@ -191,7 +191,7 @@ namespace p5r.enhance.cbt.reloaded
             public uint unitID;
             public uint currentHP;
             public uint currentSP;
-            public uint StatusAilments;
+            public int StatusAilments;
             public ushort Joker_Lv;
             public ushort Field1A;
             public uint Joker_EXP;
@@ -2763,6 +2763,105 @@ namespace p5r.enhance.cbt.reloaded
         public struct UnitTBLEnemyAffinity
         {
             // public unsafe fixed UnitAffinity EnemyAffinity[783]; // UnitAffinity EnemyAffinity[783]
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct PointerListgfw__SmartPointer_btl__Action
+        {
+            public nint func;
+            public PointerListEntry_gfw_SmartPointer_btlAction* first;
+            public PointerListEntry_gfw_SmartPointer_btlAction* last;
+            public int size;
+            public int align;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct Package_combat
+        {
+            public nint func;
+            public PointerListgfw__SmartPointer_btl__Action scene;
+            public PointerListgfw__SmartPointer_btl__Action camera;
+            public PointerListgfw__SmartPointer_btl__Action phase;
+            public PointerListgfw__SmartPointer_btl__Action order;
+            public PointerListgfw__SmartPointer_btl__Action formation;
+            public PointerListgfw__SmartPointer_btl__Action route;
+            public PointerListgfw__SmartPointer_btl__Action cameraController;
+            public PointerListgfw__SmartPointer_btl__Action frequency;
+            public PointerListgfw__SmartPointer_btl__Action allyUnits;
+            public PointerListgfw__SmartPointer_btl__Action enemyUnits;
+            public PointerListgfw__SmartPointer_btl__Action allUnits;
+            public PointerListgfw__SmartPointer_btl__Action voicedUnits;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct PointerListEntry_gfw_SmartPointer_btlAction
+        {
+            public PointerListEntry_gfw_SmartPointer_btlAction* next;
+            public PointerListEntry_gfw_SmartPointer_btlAction* prev;
+            public SmartPointer_btl__Action btlAction;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct PointerListgfw__SmartPointerbtl__Action__Entry
+        {
+            public PointerListEntry_gfw_SmartPointer_btlAction* first;
+            public PointerListEntry_gfw_SmartPointer_btlAction* last;
+            public int size;
+            public int align;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct btlAI
+        {
+            public fixed byte Field00[0x68];
+            public Package_combat* PtrToPackage;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct SmartPointer__btl_ai
+        {
+            public nint func;
+            public nint first;
+            public nint last;
+            public btlAI* ptrToAI;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct Participate
+        {
+            public nint field00;
+            public nint field08;
+            public nint field10;
+            public SmartPointer_btl__Unit field18;
+            public nint field38;
+            public SmartPointer__btl_ai field40;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct SmartPointer_btl__Action
+        {
+            public nint func;
+            public SmartPointer_btl__Action* prev;
+            public SmartPointer_btl__Action* next;
+            public Participate* participatePtr;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct SmartPointer_btl__Unit
+        {
+            public nint func;
+            public SmartPointer_btl__Unit* prev;
+            public SmartPointer_btl__Unit* next;
+            public Unit* field18;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct Unit
+        {
+            public nint field00;
+            public nint field08;
+            public datUnit* datUnitPtr;
+            public datUnit* datUnitPtrFullHP;
         }
     }
 }
