@@ -2800,7 +2800,7 @@ namespace p5r.enhance.cbt.reloaded
             public PointerListgfw__SmartPointer_btl__Action miscUnits4;
             public nint packageFlags1;
             public nint packageFlags2;
-            public uint encounterID;
+            public int encounterID;
             public uint battleFieldSetting;
             public ushort fieldMajor;
             public ushort fieldMinor;
