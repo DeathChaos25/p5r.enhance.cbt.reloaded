@@ -106,6 +106,10 @@ namespace p5r.enhance.cbt.reloaded
         public delegate ushort GetPlayerIDFromPartySlotDelegate(int a1);
         public GetPlayerIDFromPartySlotDelegate GetPlayerIDFromPartySlot;
 
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public delegate void FreeSmartPointerDelegate(nint a1);
+        public FreeSmartPointerDelegate FreeSmartPointer;
+
         /*[Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
         public unsafe delegate void LoadSoundByCueIDCombatVoiceDelegate(nint a1, nint a2, int CueID, byte a4);
         public LoadSoundByCueIDCombatVoiceDelegate LoadSoundByCueIDCombatVoice;*/
@@ -243,6 +247,13 @@ namespace p5r.enhance.cbt.reloaded
             {
                 var funcAddress = GetGlobalAddress(address + 1);
                 GetPlayerIDFromPartySlot = _hooks.CreateWrapper<GetPlayerIDFromPartySlotDelegate>((long)funcAddress, out _);
+            });
+
+            // v1.0.4 = 0x140029d10
+            SigScan("E8 ?? ?? ?? ?? B8 27 01 00 00", "Free SmartPointer", address =>
+            {
+                var funcAddress = GetGlobalAddress(address + 1);
+                FreeSmartPointer = _hooks.CreateWrapper<FreeSmartPointerDelegate>((long)funcAddress, out _);
             });
 
         }

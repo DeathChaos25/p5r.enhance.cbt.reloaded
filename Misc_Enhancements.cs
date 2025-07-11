@@ -92,8 +92,11 @@ namespace p5r.enhance.cbt.reloaded
         public delegate nint PlayerEscapeDelegate(nint a1, nint a2);
         static private IHook<PlayerEscapeDelegate> _hookPlayerEscape;
 
-        public delegate nint MarukiDetoxDelegate(Participate* a1, nint a2);
-        static private IHook<MarukiDetoxDelegate> _hookMarukiDetox;
+        public delegate void RearrangeBattleOrderDelegate(Package_combat* a2);
+        static private IHook<RearrangeBattleOrderDelegate> _hookRearrangeBattleOrder;
+
+        public delegate int CheckFutabaUltimateSupportUseDelegate(nint a1, nint a2, nint a3);
+        static private IHook<CheckFutabaUltimateSupportUseDelegate> _hookCheckFutabaUltimateSupportUse;
 
         public static byte rndTitle = 0;
 
@@ -126,6 +129,8 @@ namespace p5r.enhance.cbt.reloaded
 
         private static int SKILL_TBL_Section0_EntrySize = 8;  // 0x08
         private static int SKILL_TBL_Section1_EntrySize = 48; // 0x30
+
+        private static Package_combat* _packageCombat = null;
 
         internal Misc_Enhancements(ModContext context)
         {
@@ -334,12 +339,18 @@ namespace p5r.enhance.cbt.reloaded
                     _hookPlayerEscape = _hooks.CreateHook<PlayerEscapeDelegate>(PlayerEscape, address).Activate();
                 });
 
-                SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 55 41 54 41 55 41 56 41 57 48 8B EC 48 81 EC 80 00 00 00 B9 05 01 00 00", "Maruki Detox Check", address =>
+                SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 55 57 41 54 41 55 41 57 48 8D 6C 24 ?? 48 81 EC B0 00 00 00", "CheckFutabaUltimateSupportUse", address =>
                 {
-                    _hookMarukiDetox = _hooks.CreateHook<MarukiDetoxDelegate>(MarukiDetox, address).Activate();
+                    _hookCheckFutabaUltimateSupportUse = _hooks.CreateHook<CheckFutabaUltimateSupportUseDelegate>(CheckFutabaUltimateSupportUse, address).Activate();
                 });
             }
 
+
+            // v1.0.0 = 0x140934e40
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 48 89 4C 24 ?? 55 41 54 41 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC A0 00 00 00 45 33 E4", "Rearrange Battle Order", address =>
+            {
+                _hookRearrangeBattleOrder = _hooks.CreateHook<RearrangeBattleOrderDelegate>(RearrangeBattleOrder, address).Activate();
+            });
 
             // v1.0.0 = 0x140de801d
             SigScan("49 81 FA 40 0C 01 00", "PersonaVisualTBLALimit_Sig", address =>
@@ -1882,6 +1893,115 @@ namespace p5r.enhance.cbt.reloaded
                 flowApi.SetReturnValue(currUnit->VoicePackABC);
                 return FlowStatus.SUCCESS;
             });
+
+            flowFramework.Register("BTL_SET_ENEMY_FLAG", 3, () =>
+            {
+                LogDebugFunc("BTL_SET_ENEMY_FLAG called");
+                
+                int unitID = flowApi.GetIntArg(0);
+                int toggleFlag = flowApi.GetIntArg(1);
+                bool onOff = flowApi.GetIntArg(2) > 0;
+
+                List<nint> datUnits = GetDatUnitOfTypeAndIDFromPackage(_packageCombat, 2, (ushort)unitID);
+
+                foreach (nint datUnitPtr in datUnits)
+                {
+                    if (datUnitPtr == 0)
+                    {
+                        continue;
+                    }
+                    datUnit* currUnit = (datUnit*)datUnitPtr;
+                    memory.Write<int>((nuint)(&currUnit->Flags), ToggleBit((int)currUnit->Flags, toggleFlag, onOff));
+                }
+
+                return FlowStatus.SUCCESS;
+            });
+
+            flowFramework.Register("BTL_GET_ENEMY_FLAG", 2, () =>
+            {
+                LogDebugFunc("BTL_GET_ENEMY_FLAG called");
+                
+                int unitID = flowApi.GetIntArg(0);
+                int toggleFlag = flowApi.GetIntArg(1);
+
+                List<nint> datUnits = GetDatUnitOfTypeAndIDFromPackage(_packageCombat, 2, (ushort)unitID);
+
+                if (datUnits.Count == 0)
+                {
+                    flowApi.SetReturnValue(0);
+                    return FlowStatus.SUCCESS;
+                }
+
+                foreach (nint datUnitPtr in datUnits)
+                {
+                    if (datUnitPtr == 0)
+                    {
+                        continue;
+                    }
+                    datUnit* currUnit = (datUnit*)datUnitPtr;
+                    int flags = memory.Read<int>((nuint)(&currUnit->Flags));
+
+                    flowApi.SetReturnValue(IsBitSet(flags, toggleFlag));
+                }
+
+                return FlowStatus.SUCCESS;
+            });
+
+            flowFramework.Register("BTL_SET_ENEMY_STATUS", 3, () =>
+            {
+                LogDebugFunc("BTL_SET_ENEMY_STATUS called");
+                
+                int unitID = flowApi.GetIntArg(0);
+                int statusFlag = flowApi.GetIntArg(1);
+                bool onOff = flowApi.GetIntArg(2) > 0;
+
+                List<nint> datUnits = GetDatUnitOfTypeAndIDFromPackage(_packageCombat, 2, (ushort)unitID);
+
+                if (datUnits.Count == 0)
+                {
+                    return FlowStatus.SUCCESS;
+                }
+
+                foreach (nint datUnitPtr in datUnits)
+                {
+                    if (datUnitPtr == 0)
+                    {
+                        continue;
+                    }
+                    datUnit* currUnit = (datUnit*)datUnitPtr;
+                    memory.Write<int>((nuint)(&currUnit->StatusAilments), ToggleBit((int)currUnit->StatusAilments, statusFlag, onOff));
+                }
+
+                return FlowStatus.SUCCESS;
+            });
+
+            flowFramework.Register("BTL_GET_ENEMY_STATUS", 2, () =>
+            {
+                LogDebugFunc("BTL_GET_ENEMY_STATUS called");
+                
+                int unitID = flowApi.GetIntArg(0);
+                int statusFlag = flowApi.GetIntArg(1);
+                List<nint> datUnits = GetDatUnitOfTypeAndIDFromPackage(_packageCombat, 2, (ushort)unitID);
+
+                if (datUnits.Count == 0)
+                {
+                    flowApi.SetReturnValue(0);
+                    return FlowStatus.SUCCESS;
+                }
+
+                foreach (nint datUnitPtr in datUnits)
+                {
+                    if (datUnitPtr == 0)
+                    {
+                        continue;
+                    }
+                    datUnit* currUnit = (datUnit*)datUnitPtr;
+                    int statusAilments = memory.Read<int>((nuint)(&currUnit->StatusAilments));
+                    flowApi.SetReturnValue(IsBitSet(statusAilments, statusFlag));
+                }
+
+                return FlowStatus.SUCCESS;
+            });
         }
 
         public static unsafe int HookCalendarTransPlayKnifeSfx(CalendarTransStruct* a1)
@@ -2158,11 +2278,29 @@ namespace p5r.enhance.cbt.reloaded
             return result;
         }
 
-        public unsafe nint MarukiDetox(Participate* a1, nint a2)
+        public unsafe void RearrangeBattleOrder(Package_combat* a2)
         {
-            nint result = _hookMarukiDetox.OriginalFunction(a1, a2);
-            Log($"{GetNumberOfEnemyUnitsAlive(a1)} enemies alive in current encounter");
-            return result;
+            LogDebugFunc("RearrangeBattleOrder called");
+
+            _hookRearrangeBattleOrder.OriginalFunction(a2);
+            
+            _packageCombat = a2;
+
+            if (a2 != null)
+            {
+                LogAllUnitsInCurrentPackage(a2);
+            }
+        }
+
+        public int CheckFutabaUltimateSupportUse(nint a1, nint a2, nint a3)
+        {
+            if (isDatUnitDead(1)) // Joker is dead
+            {
+                LogDebug("Futaba Ultimate Support check skipped due to dead Joker");
+                _gameFunctions.FreeSmartPointer(a3);
+                return -1;
+            }
+            else return _hookCheckFutabaUltimateSupportUse.OriginalFunction(a1, a2, a3);
         }
 
         public nint PlayerEscape(nint a1, nint a2)
@@ -2278,111 +2416,27 @@ namespace p5r.enhance.cbt.reloaded
             return currEnemy;
         }
 
-        public unsafe void ProcessEnemyUnits(Participate* a1)
-        {
-            if (a1 == null)
-            {
-                Log("Error: Participate pointer is null");
-                return;
-            }
-
-            if (a1->field40.ptrToAI == null)
-            {
-                Log("Error: ptrToAI is null");
-                return;
-            }
-
-            if (a1->field40.ptrToAI->PtrToPackage == null)
-            {
-                Log("Error: PtrToPackage is null");
-                return;
-            }
-
-            PointerListgfw__SmartPointer_btl__Action* enemyUnits =
-                &a1->field40.ptrToAI->PtrToPackage->enemyUnits;
-
-            if (enemyUnits->first == null)
-            {
-                Log("No enemy units found in list");
-                return;
-            }
-
-            PointerListEntry_gfw_SmartPointer_btlAction* current = enemyUnits->first;
-            int unitCount = 0;
-
-            while (current != null)
-            {
-                unitCount++;
-                Log($"\nProcessing enemy unit #{unitCount}");
-
-                if (&current->btlAction == null)
-                {
-                    LogNoPrefix("  Error: btlAction pointer is null");
-                    current = current->next;
-                    continue;
-                }
-
-                SmartPointer_btl__Action* action = &current->btlAction;
-
-                if (action->participatePtr == null)
-                {
-                    LogNoPrefix("  Error: participatePtr is null");
-                    current = current->next;
-                    continue;
-                }
-
-                Participate* participate = action->participatePtr;
-
-                if (&participate->field18 == null)
-                {
-                    LogNoPrefix("  Error: field18 pointer is null");
-                    current = current->next;
-                    continue;
-                }
-
-                SmartPointer_btl__Unit* unitPtr = &participate->field18;
-
-                if (unitPtr->field18 == null)
-                {
-                    LogNoPrefix("  Error: Unit pointer is null");
-                    current = current->next;
-                    continue;
-                }
-
-                Unit* unit = unitPtr->field18;
-
-                if (unit->datUnitPtr == null)
-                {
-                    LogNoPrefix("  Error: datUnitPtr is null");
-                    current = current->next;
-                    continue;
-                }
-
-                datUnit* datUnit = unit->datUnitPtr;
-
-                LogNoPrefix($"  Unit Type: {datUnit->unitType}");
-                LogNoPrefix($"  Unit ID: {datUnit->unitID}");
-
-                current = current->next;
-            }
-
-            Log($"Finished processing {unitCount} enemy units");
-        }
-
+        //
+        ///// I have no idea what the fuck I'm doing here, pray for all of our souls
+        //
         public int GetNumberOfEnemyUnitsAlive(Participate* a1)
         {
             if (a1 == null || a1->field40.ptrToAI == null || a1->field40.ptrToAI->PtrToPackage == null)
             {
-                Log("Error: Participate or AI package is null");
+                LogDebug("Error: Participate or AI package is null");
                 return -1;
             }
-            PointerListgfw__SmartPointer_btl__Action* enemyUnits = &a1->field40.ptrToAI->PtrToPackage->enemyUnits;
-            if (enemyUnits->first == null)
+            return GetNumberOfEnemyUnitsAlive(a1->field40.ptrToAI->PtrToPackage);
+        }
+
+        public int GetNumberOfEnemyUnitsAlive(Package_combat* a1)
+        {
+            if (a1 == null || a1->enemyUnits.first == null)
             {
-                Log("No enemy units found in list");
+                LogDebug("Error: Package_combat or enemyUnits list is null");
                 return -1;
             }
-            PointerListEntry_gfw_SmartPointer_btlAction* current = enemyUnits->first;
+            PointerListEntry_gfw_SmartPointer_btlAction* current = a1->enemyUnits.first;
             int aliveCount = 0;
             while (current != null)
             {
@@ -2400,19 +2454,24 @@ namespace p5r.enhance.cbt.reloaded
             return aliveCount;
         }
 
-        public unsafe datUnit* GetDatUnitOfTypeAndIDFromParticipate(Participate* a1, int unitType, int unitID)
+        public unsafe List<nint> GetDatUnitOfTypeAndIDFromParticipate(Participate* a1, int unitType, int unitID)
         {
             if (a1 == null || a1->field40.ptrToAI == null || a1->field40.ptrToAI->PtrToPackage == null)
             {
                 return null;
             }
-            PointerListgfw__SmartPointer_btl__Action* allUnits = &a1->field40.ptrToAI->PtrToPackage->allUnits;
-            if (allUnits->first == null)
-            {
-                return null;
-            }
-            PointerListEntry_gfw_SmartPointer_btlAction* current = allUnits->first;
+            return GetDatUnitOfTypeAndIDFromPackage(a1->field40.ptrToAI->PtrToPackage, unitType, unitID);
+        }
 
+        public unsafe List<nint> GetDatUnitOfTypeAndIDFromPackage(Package_combat* a1, int unitType, int unitID)
+        {
+            List<nint> result = new List<nint>();
+            if (a1 == null || a1->allUnits.first == null)
+            {
+                LogDebug("Error: Package_combat or allUnits list is null");
+                return result;
+            }
+            PointerListEntry_gfw_SmartPointer_btlAction* current = a1->allUnits.first;
             while (current != null)
             {
                 SmartPointer_btl__Action* action = &current->btlAction;
@@ -2421,12 +2480,12 @@ namespace p5r.enhance.cbt.reloaded
                     datUnit* datUnit = action->participatePtr->field18.field18->datUnitPtr;
                     if (datUnit != null && datUnit->unitType == unitType && datUnit->unitID == unitID)
                     {
-                        return datUnit;
+                        result.Add((nint)datUnit);
                     }
                 }
                 current = current->next;
             }
-            return null;
+            return result;
         }
 
         public unsafe bool isCurrentParticipateFromEnemy(Participate* a1)
@@ -2439,10 +2498,50 @@ namespace p5r.enhance.cbt.reloaded
             return a1->field18.field18->datUnitPtr->unitType == 2;
         }
 
+        public datUnit* getDatUnitFromParticipate(Participate* a1)
+        {
+            if (a1 == null || a1->field18.field18 == null || a1->field18.field18->datUnitPtr == null)
+            {
+                return null;
+            }
+            
+            return a1->field18.field18->datUnitPtr;
+        }
 
-        //
-        ///// I have no idea what the fuck I'm doing here, pray for all of our souls
-        //
+        public void LogAllUnitsInCurrentPackage(Package_combat* a1)
+        {
+            if (a1 == null || a1->allUnits.first == null)
+            {
+                LogDebug("Error: Package_combat or allUnits list is null");
+                return;
+            }
+            PointerListEntry_gfw_SmartPointer_btlAction* current = a1->allUnits.first;
+            int unitCount = 0;
+            while (current != null)
+            {
+                unitCount++;
+                SmartPointer_btl__Action* action = &current->btlAction;
+                if (action->participatePtr == null || action->participatePtr->field18.field18 == null)
+                {
+                    LogNoPrefix($"  Error: participatePtr or field18 pointer is null for unit #{unitCount}");
+                    current = current->next;
+                    continue;
+                }
+                Participate* participate = action->participatePtr;
+                datUnit* datUnit = participate->field18.field18->datUnitPtr;
+                if (datUnit == null)
+                {
+                    LogNoPrefix($"  Error: datUnitPtr is null for unit #{unitCount}");
+                    current = current->next;
+                    continue;
+                }
+                LogNoPrefix($"  {(datUnit->unitType == 2 ? "Enemy" : "Player")} Unit ID: {datUnit->unitID}");
+                current = current->next;
+            }
+            Log($"Finished logging {unitCount} units in the current package");
+        }
+
+
         public void WriteEnemyBit(nint baseAddress, int enemyId, int bitIndex, bool value)
         {
             var memory = Memory.Instance;

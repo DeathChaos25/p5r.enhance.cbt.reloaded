@@ -2791,6 +2791,34 @@ namespace p5r.enhance.cbt.reloaded
             public PointerListgfw__SmartPointer_btl__Action enemyUnits;
             public PointerListgfw__SmartPointer_btl__Action allUnits;
             public PointerListgfw__SmartPointer_btl__Action voicedUnits;
+            public PointerListgfw__SmartPointer_btl__Action miscUnits2;
+            public PointerListgfw__SmartPointer_btl__Action miscUnits3;
+            public PointerListgfw__SmartPointer_btl__Action personaEffects;
+            public PointerListgfw__SmartPointer_btl__Action skillTimeline;
+            public PointerListgfw__SmartPointer_btl__Action objectList;
+            public PointerListgfw__SmartPointer_btl__Action eventList;
+            public PointerListgfw__SmartPointer_btl__Action miscUnits4;
+            public nint packageFlags1;
+            public nint packageFlags2;
+            public uint encounterID;
+            public uint battleFieldSetting;
+            public ushort fieldMajor;
+            public ushort fieldMinor;
+            public ushort envMajor;
+            public ushort envMinor;
+            public ushort envSub;
+            public ushort Field28A;
+            public int battleAdvantageType;
+            public int talkMoney;
+            public int talkItem;
+            public int challengeBtl298_1;
+            public int challengeBtl298_2;
+            public byte challengeBtl2A0;
+            public byte challengeBtl2A1;
+            public ushort challengeBtl2A2;
+            public float deltaTime;
+            public float encounterTimeFreq;
+            public float encounterTimeReal;
         }
 
         [StructLayout(LayoutKind.Sequential)]
