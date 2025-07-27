@@ -112,6 +112,9 @@ namespace p5r.enhance.cbt.reloaded
                 bgmeApi.AddPath(Path.Join(this._modLoader.GetDirectoryForModId(this._modConfig.ModId), "ExtraBaseBGM", "AmbushAmbushedBGM.pme"));
             }
 
+            LoadCBTMod DllLoader = new LoadCBTMod();
+            DllLoader.LoadCppDll(context);
+
             if (_configuration._019_extraCostumes || _configuration._019_extraCostumes_Joker)
             {
                 var CFController = _modLoader.GetController<ICostumeApi>();
@@ -136,9 +139,6 @@ namespace p5r.enhance.cbt.reloaded
                     cfAPI.AddCostumesFolder(this._modConfig.ModId, Path.Join(_modLoader.GetDirectoryForModId(this._modConfig.ModId), "ExtraCostumes_BGM"));
                 }
             }
-
-            LoadCBTMod DllLoader = new LoadCBTMod();
-            DllLoader.LoadCppDll(context);
 
 
             // For more information about this template, please see

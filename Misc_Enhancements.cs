@@ -62,7 +62,7 @@ namespace p5r.enhance.cbt.reloaded
         public unsafe delegate int calendar_trans_play_knife_sfx_Delegate(CalendarTransStruct* a1);
         static private IHook<calendar_trans_play_knife_sfx_Delegate> _hook_calendar_trans_play_knife_sfx;
 
-        public unsafe delegate int GetUnitModelID_Delegate(ushort a1, ushort a2, ushort a3);
+        public unsafe delegate int GetUnitModelID_Delegate(ushort a1, ushort a2, ushort a3, ushort a4, ushort a5);
         static private IHook<GetUnitModelID_Delegate> _hookGetUnitModelID;
 
         public unsafe delegate nint LoadResourceImpl_Delegate(ushort type, byte a2, ushort index, ushort major, byte minor, byte sub, short a7, nint a8, ushort a9, short a10);
@@ -86,6 +86,9 @@ namespace p5r.enhance.cbt.reloaded
         public unsafe delegate void checkHasEnemyDDSBossName_Delegate(EnemyPersonaFunctionStruct3* a1);
         static private IHook<checkHasEnemyDDSBossName_Delegate> _hookcheckHasEnemyDDSBossName;
 
+        public unsafe delegate bool checkHasEnemyDDSBossNameOld_Delegate(ushort a1);
+        static private IHook<checkHasEnemyDDSBossNameOld_Delegate> _hookcheckHasEnemyDDSBossNameOld;
+
         public unsafe delegate bool AreBattleUnitsDeadDelegate(Participate* a1);
         static private IHook<AreBattleUnitsDeadDelegate> _hookAreBattleUnitsDead;
 
@@ -105,7 +108,6 @@ namespace p5r.enhance.cbt.reloaded
 
         private static nint TitleBGMAddr = 0;
         private static nint PlayerOutlineColorAddr = 0;
-        private static nint EnemyIDDDSNamePatchAddress = 0;
 
         private static readonly int[] BTL_COUNTERS = new int[512];
 
@@ -132,6 +134,8 @@ namespace p5r.enhance.cbt.reloaded
 
         private static int SKILL_TBL_Section0_EntrySize = 8;  // 0x08
         private static int SKILL_TBL_Section1_EntrySize = 48; // 0x30
+
+        private static nint EnemyAnalyzeIDsAddress = 0;
 
         private static Package_combat* _packageCombat = null;
 
@@ -299,10 +303,16 @@ namespace p5r.enhance.cbt.reloaded
                 _hookcheckHasEnemyDDSBossName = _hooks.CreateHook<checkHasEnemyDDSBossName_Delegate>(checkHasEnemyDDSBossName, address).Activate();
             });
 
-            // v1.0.4 = 0x140b527c0
-            SigScan("C7 45 ?? 62 02 63 02 C7 45 ?? E8 02 E9 02 C7 45 ?? AE 02 AF 02 C7 45 ?? 34 02 35 02 C7 45 ?? 36 02 37 02 C7 45 00 39 02 45 02", "checkHasEnemyDDSBossName Enemy ID", address =>
+            // v1.0.4 = 0x140b52824
+            SigScan("C7 44 24 ?? C9 00 CA 00", "checkHasEnemyDDSBossName", address =>
             {
-                EnemyIDDDSNamePatchAddress = address;
+                EnemyAnalyzeIDsAddress = address;
+            });
+
+            // v1.0.4 = 0x140b52a70
+            SigScan("40 55 48 8D 6C 24 ?? 48 81 EC F0 00 00 00 B8 46 02 00 00", "checkHasEnemyDDSBossNameOld", address =>
+            {
+                _hookcheckHasEnemyDDSBossNameOld = _hooks.CreateHook<checkHasEnemyDDSBossNameOld_Delegate>(checkHasEnemyDDSBossNameOld, address).Activate();
             });
 
             // v1.0.0 = 0x14163cb52
@@ -640,7 +650,6 @@ namespace p5r.enhance.cbt.reloaded
                 return FlowStatus.SUCCESS;
             });
 
-
             flowFramework.Register("GET_BULLETS", 1, () =>
             {
                 LogDebugFunc("GET_BULLETS called");
@@ -662,7 +671,6 @@ namespace p5r.enhance.cbt.reloaded
                 return FlowStatus.SUCCESS;
             });
 
-
             flowFramework.Register("SET_BULLETS", 2, () =>
             {
                 LogDebugFunc("SET_BULLETS called");
@@ -681,7 +689,6 @@ namespace p5r.enhance.cbt.reloaded
 
                 return FlowStatus.SUCCESS;
             });
-
 
             flowFramework.Register("GET_TACTIC", 1, () =>
             {
@@ -702,7 +709,6 @@ namespace p5r.enhance.cbt.reloaded
 
                 return FlowStatus.SUCCESS;
             });
-
 
             flowFramework.Register("SET_TACTIC", 2, () =>
             {
@@ -2050,28 +2056,31 @@ namespace p5r.enhance.cbt.reloaded
         private const ushort PHANTOM_THIEF_DEFAULT = 51;
         private const ushort PHANTOM_THIEF_DEFAULT_DARK_SUIT = 52;
 
-        public static unsafe int GetUnitModelId(ushort characterId, ushort modelId, ushort subID)
+        public static unsafe int GetUnitModelId(ushort characterId, ushort modelId, ushort subID, ushort a4, ushort a5)
         {
             if (characterId < MIN_CHAR_ID || characterId > MAX_CHAR_ID || !_configuration._010_enableCutsceneOutfits || modelId < PHANTOM_THIEF_DEFAULT)
             {
-                return _hookGetUnitModelID.OriginalFunction(characterId, modelId, subID);
+                return _hookGetUnitModelID.OriginalFunction(characterId, modelId, subID, a4, a5);
             }
+
+            LogDebugFunc($"GetUnitModelId called: characterId {characterId}, modelId {modelId}, subID {subID}");
 
             for (int i = 0; i < 6; i++)
             {
                 if (modelId == CharModelReplacementTable[characterId, i])
                 {
-                    ushort newId = (ushort)_hookGetUnitModelID.OriginalFunction(characterId, 50, 0);
+                    ushort newId = (ushort)_hookGetUnitModelID.OriginalFunction(characterId, 50, 0, a4, a5);
 
                     if (newId != PHANTOM_THIEF_DEFAULT && newId != PHANTOM_THIEF_DEFAULT_DARK_SUIT && newId > 0)
                     {
+                        LogDebug($"GetUnitModelId: Replacing model ID {modelId} for character {characterId} with new ID {newId}");
                         return newId;
                     }
                     break;
                 }
             }
 
-            return _hookGetUnitModelID.OriginalFunction(characterId, modelId, subID);
+            return _hookGetUnitModelID.OriginalFunction(characterId, modelId, subID, a4, a5);
         }
 
         public static unsafe nint LoadResourceImpl(
@@ -2084,15 +2093,17 @@ namespace p5r.enhance.cbt.reloaded
                 {
                     if (minor == 48 && _configuration._011_randomTitle)
                     {
+                        LogDebug($"LoadResourceImpl Called; Replacing Title Screen Sub model ID for character {major:d2}");
                         sub = rndTitle;
                     }
                     else if (minor >= 51 && _configuration._010_enableCutsceneOutfits)
                     {
+                        LogDebug($"LoadResourceImpl Called; checking model ID {minor} for character {major:d2} to see if it will be replaced");
                         for (int i = 0; i < 6; i++)
                         {
                             if (minor == CharModelReplacementTable[major, i])
                             {
-                                ushort newId = (ushort)GetUnitModelId(major, 50, 0);
+                                ushort newId = (ushort)GetUnitModelId(major, 50, 0, 0, 0);
                                 if (newId != 51 && newId != 52)
                                 {
                                     minor = (byte)newId;
@@ -2202,43 +2213,68 @@ namespace p5r.enhance.cbt.reloaded
             _hookCheckShaderExists.OriginalFunction(a1);
         }
 
-        public static unsafe void checkHasEnemyDDSBossName(EnemyPersonaFunctionStruct3* a1)
+        public unsafe void checkHasEnemyDDSBossName(EnemyPersonaFunctionStruct3* a1)
         {
-            int enemyID = 0;
-            
-            if (a1 != (EnemyPersonaFunctionStruct3*)0)
+            LogDebugFunc($"checkHasEnemyDDSBossName called; a1 is 0x{(nint)a1:X8}");
+
+            List<nint> datUnits = GetDatUnitsOfTypeFromPackage(_packageCombat, 2);
+
+            short[] enemyIDs = new short[5];
+
+            for (int i = 0; i < 5; i++)
             {
-                enemyID = (int)a1->datUnitPtr->unitID;
+                enemyIDs[i] = (i < datUnits.Count) ? (short)(((datUnit*)datUnits[i])->unitID) : (short)0;
             }
 
-            if (enemyID > 0)
+            Memory memory = Memory.Instance;
+
+            if (enemyIDs[0] > 0 && IsBitSet(_gameFunctions.GetUnitTBL_Segment0_Entry(enemyIDs[0])->Flags, 31) > 0)
             {
-                int unitFlags = _gameFunctions.GetUnitTBL_Segment0_Entry(enemyID)->Flags;
-                LogDebug($"DDS Has Boss Name function checked for enemy {a1->datUnitPtr->unitID} with unit tbl flags 0x{unitFlags:X8}\n");
-                var memory = Memory.Instance;
-
-                if (IsBitSet(unitFlags, 31) != 0)
-                {
-                    LogDebug($"DDS Boss Name patch applied for enemy {enemyID}\n");
-                    var newEnemyID = _gameFunctions.GetUnitTBL_Segment0_Entry(enemyID)->EvtItemDrop[2];
-                    if (newEnemyID > 0) enemyID = newEnemyID;
-
-                    var FileString = $"battle/analyze/boss_name_{enemyID:d3}.dds";
-                    var FileStringBytes = Marshal.StringToHGlobalAnsi(FileString);
-                    nint result = _gameFunctions.somethingBossDDSFileOpen(FileStringBytes, 1, 0);
-                    memory.Write<nint>((nuint)(&a1->Field38), result);
-                    Marshal.FreeHGlobal(FileStringBytes);
-
-                    return;
-                }
-                /*else
-                {
-                    LogDebug($"Enemy {enemyID} did not have custom boss dds flag, reverting\n");
-                    memory.SafeWrite((nuint)EnemyIDDDSNamePatchAddress + 5, BitConverter.GetBytes((short)611));
-                }*/
+                memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 4, BitConverter.GetBytes(enemyIDs[0]));
             }
+            else memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 4, BitConverter.GetBytes((short)201));
+
+            if (enemyIDs[1] > 0 && IsBitSet(_gameFunctions.GetUnitTBL_Segment0_Entry(enemyIDs[1])->Flags, 31) > 0)
+            {
+                memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 4 + 2, BitConverter.GetBytes(enemyIDs[1]));
+            }
+            else memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 4 + 2, BitConverter.GetBytes((short)202));
+
+            if (enemyIDs[2] > 0 && IsBitSet(_gameFunctions.GetUnitTBL_Segment0_Entry(enemyIDs[2])->Flags, 31) > 0)
+            {
+                memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 8 + 4, BitConverter.GetBytes(enemyIDs[2]));
+            }
+            else memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 8 + 4, BitConverter.GetBytes((short)206));
+
+            if (enemyIDs[3] > 0 && IsBitSet(_gameFunctions.GetUnitTBL_Segment0_Entry(enemyIDs[3])->Flags, 31) > 0)
+            {
+                memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 8 + 4 + 2, BitConverter.GetBytes(enemyIDs[3]));
+            }
+            else memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 8 + 4 + 2, BitConverter.GetBytes((short)207));
+
+            if (enemyIDs[4] > 0 && IsBitSet(_gameFunctions.GetUnitTBL_Segment0_Entry(enemyIDs[4])->Flags, 31) > 0)
+            {
+                memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 8 + 8 + 4, BitConverter.GetBytes(enemyIDs[4]));
+            }
+            else memory.SafeWrite((nuint)EnemyAnalyzeIDsAddress + 8 + 8 + 4, BitConverter.GetBytes((short)208));
 
             _hookcheckHasEnemyDDSBossName.OriginalFunction(a1);
+        }
+
+        public static unsafe bool checkHasEnemyDDSBossNameOld(ushort a1)
+        {
+            LogDebugFunc($"checkHasEnemyDDSBossNameOld called for enemy {a1}");
+            if (a1 > 0)
+            {
+                int unitFlags = _gameFunctions.GetUnitTBL_Segment0_Entry(a1)->Flags;
+                Log($"DDS Has Boss Name function checked for enemy {a1} with unit tbl flags 0x{unitFlags:X8}\n");
+                if (IsBitSet(unitFlags, 31) != 0)
+                {
+                    LogDebug($"DDS Boss Name patch applied for enemy {a1}\n");
+                    return true;
+                }
+            }
+            return _hookcheckHasEnemyDDSBossNameOld.OriginalFunction(a1);
         }
 
         public static unsafe void CombineColorBytes(nint a1, SoundBank_Struct* a2, nint a3)
@@ -2506,6 +2542,40 @@ namespace p5r.enhance.cbt.reloaded
             return result;
         }
 
+        public unsafe List<nint> GetDatUnitsOfTypeFromParticipate(Participate* a1, int unitType)
+        {
+            if (a1 == null || a1->field40.ptrToAI == null || a1->field40.ptrToAI->PtrToPackage == null)
+            {
+                return null;
+            }
+            return GetDatUnitsOfTypeFromPackage(a1->field40.ptrToAI->PtrToPackage, unitType);
+        }
+
+        public unsafe List<nint> GetDatUnitsOfTypeFromPackage(Package_combat* a1, int unitType)
+        {
+            List<nint> result = new List<nint>();
+            if (a1 == null || a1->allUnits.first == null)
+            {
+                LogDebug("Error: Package_combat or allUnits list is null");
+                return result;
+            }
+            PointerListEntry_gfw_SmartPointer_btlAction* current = a1->allUnits.first;
+            while (current != null)
+            {
+                SmartPointer_btl__Action* action = &current->btlAction;
+                if (action->participatePtr != null && action->participatePtr->field18.field18 != null)
+                {
+                    datUnit* datUnit = action->participatePtr->field18.field18->datUnitPtr;
+                    if (datUnit != null && datUnit->unitType == unitType)
+                    {
+                        result.Add((nint)datUnit);
+                    }
+                }
+                current = current->next;
+            }
+            return result;
+        }
+
         public unsafe bool isCurrentParticipateFromEnemy(Participate* a1)
         {
             if (a1 == null || a1->field18.field18 == null || a1->field18.field18->datUnitPtr == null)
@@ -2541,7 +2611,7 @@ namespace p5r.enhance.cbt.reloaded
                 SmartPointer_btl__Action* action = &current->btlAction;
                 if (action->participatePtr == null || action->participatePtr->field18.field18 == null)
                 {
-                    LogNoPrefix($"  Error: participatePtr or field18 pointer is null for unit #{unitCount}");
+                    LogDebug($"  Error: participatePtr or field18 pointer is null for unit #{unitCount}");
                     current = current->next;
                     continue;
                 }
@@ -2549,16 +2619,15 @@ namespace p5r.enhance.cbt.reloaded
                 datUnit* datUnit = participate->field18.field18->datUnitPtr;
                 if (datUnit == null)
                 {
-                    LogNoPrefix($"  Error: datUnitPtr is null for unit #{unitCount}");
+                    LogDebug($"  Error: datUnitPtr is null for unit #{unitCount}");
                     current = current->next;
                     continue;
                 }
                 LogNoPrefix($"  {(datUnit->unitType == 2 ? "Enemy" : "Player")} Unit ID: {datUnit->unitID}");
                 current = current->next;
             }
-            Log($"Finished logging {unitCount} units in the current package");
+            LogNoPrefix($"Finished logging {unitCount} units in the current package");
         }
-
 
         public void WriteEnemyBit(nint baseAddress, int enemyId, int bitIndex, bool value)
         {
