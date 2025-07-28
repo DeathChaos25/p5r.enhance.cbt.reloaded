@@ -101,9 +101,6 @@ namespace p5r.enhance.cbt.reloaded
         public delegate int CheckFutabaUltimateSupportUseDelegate(nint a1, nint a2, nint a3);
         static private IHook<CheckFutabaUltimateSupportUseDelegate> _hookCheckFutabaUltimateSupportUse;
 
-        public delegate bool isEncounterABossBattleDelegate(Package_combat* a1);
-        static private IHook<isEncounterABossBattleDelegate> _hookisEncounterABossBattle;
-
         public static byte rndTitle = 0;
 
         private static nint TitleBGMAddr = 0;
@@ -362,12 +359,6 @@ namespace p5r.enhance.cbt.reloaded
             SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 48 89 4C 24 ?? 55 41 54 41 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC A0 00 00 00 45 33 E4", "Rearrange Battle Order", address =>
             {
                 _hookRearrangeBattleOrder = _hooks.CreateHook<RearrangeBattleOrderDelegate>(RearrangeBattleOrder, address).Activate();
-            });
-
-            // v1.0.0 = 0x140921ea0
-            SigScan("8B 81 ?? ?? ?? ?? 45 32 C0", "isEncounterABossBattle", address =>
-            {
-                _hookisEncounterABossBattle = _hooks.CreateHook<isEncounterABossBattleDelegate>(isEncounterABossBattle, address).Activate();
             });
 
             // v1.0.0 = 0x140de801d
@@ -2336,16 +2327,6 @@ namespace p5r.enhance.cbt.reloaded
             {
                 LogAllUnitsInCurrentPackage(a2);
             }
-        }
-
-        public unsafe bool isEncounterABossBattle(Package_combat* a1)
-        {
-            if (IsBitSet(_gameFunctions.GetEncounterTBLData(a1->encounterID)->flags, 25) > 0)
-            {
-                return true;
-            }
-
-            return _hookisEncounterABossBattle.OriginalFunction(a1);
         }
 
         public int CheckFutabaUltimateSupportUse(nint a1, nint a2, nint a3)
