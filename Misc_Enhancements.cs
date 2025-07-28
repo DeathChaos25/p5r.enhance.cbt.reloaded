@@ -2058,12 +2058,12 @@ namespace p5r.enhance.cbt.reloaded
 
         public static unsafe int GetUnitModelId(ushort characterId, ushort modelId, ushort subID, ushort a4, ushort a5)
         {
+            LogDebugFunc($"GetUnitModelId called: characterId {characterId}, modelId {modelId}, subID {subID}");
+
             if (characterId < MIN_CHAR_ID || characterId > MAX_CHAR_ID || !_configuration._010_enableCutsceneOutfits || modelId < PHANTOM_THIEF_DEFAULT)
             {
                 return _hookGetUnitModelID.OriginalFunction(characterId, modelId, subID, a4, a5);
             }
-
-            LogDebugFunc($"GetUnitModelId called: characterId {characterId}, modelId {modelId}, subID {subID}");
 
             for (int i = 0; i < 6; i++)
             {
@@ -2086,7 +2086,7 @@ namespace p5r.enhance.cbt.reloaded
         public static unsafe nint LoadResourceImpl(
             ushort type, byte a2, ushort index, ushort major, byte minor, byte sub, short a7, nint a8, ushort a9, short a10)
         {
-            // Log($"LoadResourceImpl: type {type}, a2 {a2}, index {index}, major {major}, minor {minor}, sub {sub}, a7 {a7}, a8 {a8}, a9 {a9}, a10 {a10}");
+            LogDebug($"LoadResourceImpl: type {type}, a2 {a2}, index {index}, major {major}, minor {minor}, sub {sub}, a7 {a7}, a8 {a8}, a9 {a9}, a10 {a10}");
             if (type == 2 || type == 5)
             {
                 if (major >= MIN_CHAR_ID && major <= MAX_CHAR_ID)
@@ -2151,6 +2151,8 @@ namespace p5r.enhance.cbt.reloaded
 
         public static unsafe int UnitTurnStart(StructD* a1, nint a2, nint a3, nint a4)
         {
+            LogDebugFunc("UnitTurnStart called");
+            
             if (a1 == null || a1->nextPTR == null || a1->nextPTR->datUnitPtr == null) return _hookUnitTurnStart.OriginalFunction(a1, a2, a3, a4);
 
             if (a1->nextPTR->datUnitPtr->unitType == 1)
@@ -2348,6 +2350,8 @@ namespace p5r.enhance.cbt.reloaded
 
         public int CheckFutabaUltimateSupportUse(nint a1, nint a2, nint a3)
         {
+            LogDebugFunc("CheckFutabaUltimateSupportUse called");
+
             if (isDatUnitDead(1)) // Joker is dead
             {
                 LogDebug("Futaba Ultimate Support check skipped due to dead Joker");
@@ -2359,6 +2363,8 @@ namespace p5r.enhance.cbt.reloaded
 
         public nint PlayerEscape(nint a1, nint a2)
         {
+            LogDebugFunc("PlayerEscape called");
+
             CheckJokerDeadAndRevive();
 
             return _hookPlayerEscape.OriginalFunction(a1, a2);
