@@ -47,7 +47,7 @@ namespace p5r.enhance.cbt.reloaded.Configuration
 
         [DisplayName("No Game Over on Joker's Death")]
         [Description("Makes the game over condition be that the entire party is dead\ninstead of just Joker dying.")]
-        [DefaultValue(true)]
+        [DefaultValue(false)]
         [Category("Toggles")]
         public bool _013_NoGameOverOnJokerDie { get; set; } = false;
 
