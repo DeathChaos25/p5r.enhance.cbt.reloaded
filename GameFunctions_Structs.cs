@@ -2891,5 +2891,16 @@ namespace p5r.enhance.cbt.reloaded
             public datUnit* datUnitPtr;
             public datUnit* datUnitPtrFullHP;
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct TotalDaysStruct
+        {
+            public short CurrentTotalDay;
+            public byte CurrentTimeSlot;
+            public byte Align1;
+            public short NextTotalDay;
+            public byte NextTimeSlot;
+            public byte Align2;
+        }
     }
 }

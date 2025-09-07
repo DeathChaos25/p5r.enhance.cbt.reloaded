@@ -114,6 +114,18 @@ namespace p5r.enhance.cbt.reloaded
         public unsafe delegate void LoadSoundByCueIDCombatVoiceDelegate(nint a1, nint a2, int CueID, byte a4);
         public LoadSoundByCueIDCombatVoiceDelegate LoadSoundByCueIDCombatVoice;*/
 
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public delegate void SetCurrentTotalDayDelegate(ushort day);
+        public SetCurrentTotalDayDelegate SetCurrentTotalDay;
+
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public delegate void SetCurrentTimeslotDelegate(ushort day);
+        public SetCurrentTimeslotDelegate SetCurrentTimeslot;
+
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public delegate ushort GetTotalDayFromDateDelegate(ushort month, byte day);
+        public GetTotalDayFromDateDelegate GetTotalDayFromDate;
+
         private nint GetDaysAddr = 0;
         private nint GetUserLangAddr = 0;
 
@@ -256,6 +268,24 @@ namespace p5r.enhance.cbt.reloaded
                 FreeSmartPointer = _hooks.CreateWrapper<FreeSmartPointerDelegate>((long)funcAddress, out _);
             });
 
+            // v1.0.4 = 0x140b712a0
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 0F B7 D9 33 C9", "SetCurrentTotalDay", address =>
+            {
+                SetCurrentTotalDay = _hooks.CreateWrapper<SetCurrentTotalDayDelegate>(address, out _);
+            });
+
+            // v1.0.4 = 0x140b70690
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 0F B6 F9 33 C9", "SetCurrentTimeslot", address =>
+            {
+                SetCurrentTimeslot = _hooks.CreateWrapper<SetCurrentTimeslotDelegate>(address, out _);
+            });
+
+            // v1.0.4 = 0x14af74410
+            SigScan("48 83 EC 08 31 C0 41 89 D3", "GetTotalDayFromDate", address =>
+            {
+                GetTotalDayFromDate = _hooks.CreateWrapper<GetTotalDayFromDateDelegate>(address, out _);
+            });
+
         }
 
         public int RandomIntBetween(int min, int max)
@@ -278,6 +308,16 @@ namespace p5r.enhance.cbt.reloaded
 
             short** days = (short**)newAddress;
             return **days;
+        }
+
+        public unsafe TotalDaysStruct* GetTotalDaysStruct()
+        {
+            nint a1 = GetDaysAddr;
+            int opd = *(int*)(a1 + 3);
+            nint newAddress = a1 + (nint)opd + 7;
+
+            TotalDaysStruct** structPtr = (TotalDaysStruct**)newAddress;
+            return *structPtr;
         }
 
         public short GetUserLang()

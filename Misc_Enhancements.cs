@@ -13,6 +13,7 @@ using System;
 using System.Diagnostics;
 using System.Net;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using static p5r.enhance.cbt.reloaded.GameFunctions_Structs;
 using static p5r.enhance.cbt.reloaded.Utils;
@@ -100,6 +101,9 @@ namespace p5r.enhance.cbt.reloaded
 
         public delegate int CheckFutabaUltimateSupportUseDelegate(nint a1, nint a2, nint a3);
         static private IHook<CheckFutabaUltimateSupportUseDelegate> _hookCheckFutabaUltimateSupportUse;
+
+        public unsafe delegate bool doesUnitHaveSkillOrAccessoryGearDelegate(datUnit* unit, ushort skillID);
+        static private IHook<doesUnitHaveSkillOrAccessoryGearDelegate> _hookDoesUnitHaveSkillOrAccessoryGear;
 
         public static byte rndTitle = 0;
 
@@ -459,6 +463,11 @@ namespace p5r.enhance.cbt.reloaded
                 Log($"CurrentAIBasePTR: 0x{CurrentAIBasePTR:X}");
             });
 
+            /*SigScan("48 89 5C 24 ?? 48 89 6C 24 ?? 56 57 41 56 48 83 EC 70 44 0F B7 59 ??", "DoesUnitHaveSkillOrAccessoryGear", address => // 
+            {
+                _hookDoesUnitHaveSkillOrAccessoryGear = _hooks.CreateHook<doesUnitHaveSkillOrAccessoryGearDelegate>(DoesUnitHaveSkillOrAccessoryGear, address).Activate();
+            });*/
+
             ////////////////////////////////
             ////////////////////////////////
             ////////////////////////////////
@@ -595,6 +604,24 @@ namespace p5r.enhance.cbt.reloaded
 
                 return FlowStatus.SUCCESS;
             }, 0x11f1);
+
+            flowFramework.Register("SET_DBG_DAY", 3, () =>
+            {
+                LogDebugFunc("SET_DBG_DAY called");
+                
+                ushort month = (ushort)flowApi.GetIntArg(0);
+                byte day = (byte)flowApi.GetIntArg(1);
+                byte time = (byte)flowApi.GetIntArg(2);
+
+                ushort totalDay = _gameFunctions.GetTotalDayFromDate(month, day);
+
+                _gameFunctions.SetCurrentTotalDay(totalDay);
+                _gameFunctions.SetCurrentTimeslot(time);
+
+                p5rLib.FlowCaller.FAKE_DATE_RESET();
+
+                return FlowStatus.SUCCESS;
+            }, 0x63);
 
             flowFramework.Register("CALL_NAVI_DIALOGUE", 3, () =>
             {
@@ -2033,6 +2060,7 @@ namespace p5r.enhance.cbt.reloaded
                     int[] dayMapping = { 4, 5, 6, 0, 1, 2, 3 };
                     int Variation = _gameFunctions.RandomIntBetween(0, 1);
                     int DayOfWeek = _gameFunctions.GetTotalDays() % 7;
+                    Log($"HookCalendarTransPlayKnifeSfx: DayOfWeek {_gameFunctions.GetTotalDays()}, Struct Test {_gameFunctions.GetTotalDaysStruct()->CurrentTotalDay}");
                     int mappedDayOfWeek = dayMapping[DayOfWeek];
                     int DayCue = 120 + Variation + (mappedDayOfWeek * 2);
                     _gameFunctions.playSingleWordCue(DayCue);
@@ -2350,6 +2378,20 @@ namespace p5r.enhance.cbt.reloaded
 
             return _hookPlayerEscape.OriginalFunction(a1, a2);
         }
+
+        /*public bool DoesUnitHaveSkillOrAccessoryGear(datUnit* unit, ushort skillID)
+        {
+            bool result = _hookDoesUnitHaveSkillOrAccessoryGear.OriginalFunction(unit, skillID);
+
+            if (skillID != 1033 && skillID != 1034 && skillID != 1035 && skillID != 1036 && skillID != 1037 && skillID != 1038 
+                && skillID != 1015 && skillID != 1023 && skillID != 1014 && skillID != 1024
+                && skillID != 994 && skillID != 995 && skillID != 917 && skillID != 853 && skillID != 899)
+            {
+                if (unit->unitType == 1) LogNoPrefix($"Checking if {(unit->unitType == 2 ? "enemy" : "player")} ID {unit->unitID:D3} has skill {skillID:D4} -> {result}");
+            }
+
+            return result;
+        }*/
 
 
         static unsafe bool isDatUnitDead(ushort unitID)
