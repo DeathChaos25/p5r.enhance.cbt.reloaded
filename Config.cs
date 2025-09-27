@@ -138,7 +138,7 @@ namespace p5r.enhance.cbt.reloaded.Configuration
         [DisplayName("B")]
         [Description("Character color to replace the solid red color used in combat model copy.\n(Note: This will only work if the Custom Combat Model Outline Colors setting is enabled!)")]
         [DefaultValue((byte)0x1F)]
-        [Display(Order = 22)]
+        [Display(Order = 23)]
         [Category("Combat Model Color: Skull")]
         public byte _032_SkullColor_B { get; set; } = (byte)0x1F;
 

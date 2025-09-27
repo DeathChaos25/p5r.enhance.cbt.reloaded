@@ -2060,7 +2060,7 @@ namespace p5r.enhance.cbt.reloaded
                     int[] dayMapping = { 4, 5, 6, 0, 1, 2, 3 };
                     int Variation = _gameFunctions.RandomIntBetween(0, 1);
                     int DayOfWeek = _gameFunctions.GetTotalDays() % 7;
-                    Log($"HookCalendarTransPlayKnifeSfx: DayOfWeek {_gameFunctions.GetTotalDays()}, Struct Test {_gameFunctions.GetTotalDaysStruct()->CurrentTotalDay}");
+                    // Log($"HookCalendarTransPlayKnifeSfx: DayOfWeek {_gameFunctions.GetTotalDays()}, Struct Test {_gameFunctions.GetTotalDaysStruct()->CurrentTotalDay}");
                     int mappedDayOfWeek = dayMapping[DayOfWeek];
                     int DayCue = 120 + Variation + (mappedDayOfWeek * 2);
                     _gameFunctions.playSingleWordCue(DayCue);
