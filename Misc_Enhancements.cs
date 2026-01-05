@@ -15,6 +15,7 @@ using System.Net;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using static p5r.enhance.cbt.reloaded.GameFunctions_Structs;
 using static p5r.enhance.cbt.reloaded.Utils;
 using static p5rpc.lib.interfaces.Enums;
@@ -105,6 +106,9 @@ namespace p5r.enhance.cbt.reloaded
         public unsafe delegate bool doesUnitHaveSkillOrAccessoryGearDelegate(datUnit* unit, ushort skillID);
         static private IHook<doesUnitHaveSkillOrAccessoryGearDelegate> _hookDoesUnitHaveSkillOrAccessoryGear;
 
+        public unsafe delegate void JokerPortraitSelectDelegate(JokerPortraitSelectStruct* a1);
+        static private IHook<JokerPortraitSelectDelegate> _hookJokerPortraitSelect;
+
         public static byte rndTitle = 0;
 
         private static nint TitleBGMAddr = 0;
@@ -137,8 +141,11 @@ namespace p5r.enhance.cbt.reloaded
         private static int SKILL_TBL_Section1_EntrySize = 48; // 0x30
 
         private static nint EnemyAnalyzeIDsAddress = 0;
+        private nint fontSelectStringAddr = 0;
 
         private static Package_combat* _packageCombat = null;
+
+        private static int CurrentJokerPortraitID_Forced = 0;
 
         internal Misc_Enhancements(ModContext context)
         {
@@ -324,7 +331,7 @@ namespace p5r.enhance.cbt.reloaded
                 memory.SafeWrite((nuint)address + 0x15, Bytes);
             });
 
-            // v1.0.4 = 0x?????????
+            // v1.0.4 = 0x14167770d
             SigScan("83 F8 1A 0F 86 ?? ?? ?? ??", "Joker Select Portait Range Fix", address =>
             {
                 byte[] Bytes = { 0x31 }; // change 26 to 49
@@ -461,6 +468,18 @@ namespace p5r.enhance.cbt.reloaded
                 var funcAddress = GetGlobalAddress(address + 3);
                 CurrentAIBasePTR = (nint)funcAddress;
                 Log($"CurrentAIBasePTR: 0x{CurrentAIBasePTR:X}");
+            });
+
+            // v1.0.1 = 0x14179f8d0
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 81 EC 20 01 00 00 F6 01 08", "draw_joker_select", address =>
+            {
+                _hookJokerPortraitSelect = _hooks.CreateHook<JokerPortraitSelectDelegate>(JokerPortraitSelect, address).Activate();
+            });
+
+            // v1.0.4 = 0x?????????
+            SigScan("66 6f 6e 74 2f 73 65 6c 65 63 74 2f 63 75 74 69 6e 5f 25 30 33 64 5f 25 30 33 64 2e 64 64 73 00 66 6f 6e 74 2f 61 73 73 69 73 74 2f 74 75 62 75 79 61 6b 69 2e 70 6c 67 00", "font/select/cutin_%03d_%03d.dds", address =>
+            {
+                fontSelectStringAddr = address;
             });
 
             /*SigScan("48 89 5C 24 ?? 48 89 6C 24 ?? 56 57 41 56 48 83 EC 70 44 0F B7 59 ??", "DoesUnitHaveSkillOrAccessoryGear", address => // 
@@ -2034,6 +2053,25 @@ namespace p5r.enhance.cbt.reloaded
 
                 return FlowStatus.SUCCESS;
             });
+
+            flowFramework.Register("SELTEX_FORCE", 1, () =>
+            {
+                LogDebugFunc("SELTEX_FORCE called");
+
+                CurrentJokerPortraitID_Forced = flowApi.GetIntArg(0);
+                ForcedJokerPortraits.Enqueue(CurrentJokerPortraitID_Forced);
+
+                return FlowStatus.SUCCESS;
+            });
+
+            flowFramework.Register("SELTEX_FORCE_CLEAR", 0, () =>
+            {
+                LogDebugFunc("SELTEX_FORCE_CLEAR called");
+
+                ForcedJokerPortraits.Clear();
+
+                return FlowStatus.SUCCESS;
+            });
         }
 
         public static unsafe int HookCalendarTransPlayKnifeSfx(CalendarTransStruct* a1)
@@ -2354,6 +2392,43 @@ namespace p5r.enhance.cbt.reloaded
             if (a2 != null)
             {
                 LogAllUnitsInCurrentPackage(a2);
+            }
+        }
+
+        public static readonly IntQueue ForcedJokerPortraits = new IntQueue("ForcedJokerPortraits");
+
+        public unsafe void JokerPortraitSelect(JokerPortraitSelectStruct* a1)
+        {
+            bool wasForced = false;
+            int forcedPortraitId = 0;
+
+            // Check if we have any forced portraits in the specific queue
+            if (ForcedJokerPortraits.TryDequeue(out forcedPortraitId))
+            {
+                LogDebug($"Joker Dialogue Select cutin forced to ID {forcedPortraitId:D3} (Queue remaining: {ForcedJokerPortraits.Count})");
+
+                string newPortrait = $"font/select/cutin_{forcedPortraitId:D3}_000.dds";
+                var fontStringbytes = Encoding.ASCII.GetBytes(newPortrait + "\0");
+
+                wasForced = true;
+
+                var memory = Memory.Instance;
+                var strBuffer = Marshal.StringToHGlobalAnsi(newPortrait);
+                memory.SafeWrite((nuint)fontSelectStringAddr, fontStringbytes);
+                Marshal.FreeHGlobal(strBuffer);
+            }
+
+            _hookJokerPortraitSelect.OriginalFunction(a1);
+
+            if (wasForced)
+            {
+                var memory = Memory.Instance;
+                var fontString = "font/select/cutin_%03d_%03d.dds";
+                var fontStringbytes = Encoding.ASCII.GetBytes(fontString + "\0");
+
+                var strBuffer = Marshal.StringToHGlobalAnsi(fontString);
+                memory.SafeWrite((nuint)fontSelectStringAddr, fontStringbytes);
+                Marshal.FreeHGlobal(strBuffer);
             }
         }
 

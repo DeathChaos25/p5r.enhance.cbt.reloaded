@@ -2902,5 +2902,21 @@ namespace p5r.enhance.cbt.reloaded
             public byte NextTimeSlot;
             public byte Align2;
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct JokerPortraitSelectStruct
+        {
+            public byte Field00;
+            public byte Field01;
+            public byte Field02;
+            public byte Field03;
+            public byte Field04;
+            public byte Field05;
+            public byte Field06;
+            public byte Field07;
+            public byte Field08;
+            public byte Field09;
+            public byte Field0A;
+        }
     }
 }
