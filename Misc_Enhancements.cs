@@ -2072,6 +2072,35 @@ namespace p5r.enhance.cbt.reloaded
 
                 return FlowStatus.SUCCESS;
             });
+
+            flowFramework.Register("AI_ACT_ITEM", 1, () =>
+            {
+                CurrentAIStruct* UnitAI = GetCurrentAIStruct();
+
+                int itemID = flowApi.GetIntArg(0);
+
+                LogDebugFunc($"AI_ACT_ITEM called for item 0x{itemID:x4}");
+
+                UnitAI->skillID = itemID;
+                UnitAI->act_type = 2; // item use type
+
+                flowApi.SetReturnValue(itemID);
+
+                return FlowStatus.SUCCESS;
+            });
+
+            flowFramework.Register("GET_SKILL_FROM_ITEM", 1, () =>
+            {
+                int itemID = flowApi.GetIntArg(0);
+
+                int returnVal = _gameFunctions.GetSkillIDFromItemID((ushort)itemID);
+
+                LogNoPrefix($"GET_SKILL_FROM_ITEM 0x{itemID:x4} -> {returnVal}");
+
+                flowApi.SetReturnValue(returnVal);
+
+                return FlowStatus.SUCCESS;
+            });
         }
 
         public static unsafe int HookCalendarTransPlayKnifeSfx(CalendarTransStruct* a1)
@@ -2550,6 +2579,20 @@ namespace p5r.enhance.cbt.reloaded
             return (flags & (1L << n)) != 0 ? 1 : 0;
         }
 
+        public unsafe static CurrentAIStruct* GetCurrentAIStruct()
+        {
+            ulong baseAddress = *(ulong*)CurrentAIBasePTR;
+            ulong addr = *(ulong*)(baseAddress + 0x260);
+
+            if (addr == 0)
+            {
+                LogNoPrefix("CurrentAIBasePTR is null, returning null datUnit pointer\n");
+                return (CurrentAIStruct*)0;
+            }
+
+            return (CurrentAIStruct*)addr;
+        }
+
 
         public unsafe static datUnit* GetDatUnitFromCurrentAI()
         {
@@ -2698,6 +2741,32 @@ namespace p5r.enhance.cbt.reloaded
             }
             
             return a1->field18.field18->datUnitPtr;
+        }
+
+        public datUnit* getDatUnitFromPackage(Package_combat* a1)
+        {
+            if (a1 == null || a1->allUnits.first == null)
+            {
+                LogDebug("Error: Package_combat or enemyUnits list is null");
+                return null;
+            }
+
+            PointerListEntry_gfw_SmartPointer_btlAction* current = a1->allUnits.first;
+
+            while (current != null)
+            {
+                SmartPointer_btl__Action* action = &current->btlAction;
+                if (action->participatePtr != null && action->participatePtr->field18.field18 != null)
+                {
+                    datUnit* datUnit = action->participatePtr->field18.field18->datUnitPtr;
+                    if (datUnit != null)
+                    {
+                        return datUnit;
+                    }
+                }
+                current = current->next;
+            }
+            return null;
         }
 
         public void LogAllUnitsInCurrentPackage(Package_combat* a1)

@@ -126,6 +126,10 @@ namespace p5r.enhance.cbt.reloaded
         public delegate ushort GetTotalDayFromDateDelegate(ushort month, byte day);
         public GetTotalDayFromDateDelegate GetTotalDayFromDate;
 
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        public delegate ushort GetSkillIDFromItemIDDelegate(ushort itemID);
+        public GetSkillIDFromItemIDDelegate GetSkillIDFromItemID;
+
         private nint GetDaysAddr = 0;
         private nint GetUserLangAddr = 0;
 
@@ -284,6 +288,12 @@ namespace p5r.enhance.cbt.reloaded
             SigScan("48 83 EC 08 31 C0 41 89 D3", "GetTotalDayFromDate", address =>
             {
                 GetTotalDayFromDate = _hooks.CreateWrapper<GetTotalDayFromDateDelegate>(address, out _);
+            });
+
+            // v1.0.1 = 0x140dd96c0
+            SigScan("4C 8B DC 48 83 EC 78 33 D2 48 8D 05 ?? ?? ?? ?? 49 89 43 ?? 48 8D 05 ?? ?? ?? ?? 49 89 43 ?? 0F B7 C1", "GetSkillFromItem", address =>
+            {
+                GetSkillIDFromItemID = _hooks.CreateWrapper<GetSkillIDFromItemIDDelegate>(address, out _);
             });
 
         }

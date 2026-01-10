@@ -428,7 +428,7 @@ namespace p5r.enhance.cbt.reloaded
             public uint field4c;
             public uint field50;
             public uint field54;
-            public uint skillID;
+            public int skillID;
             public uint field5c;
             public uint field60;
             public uint field64;
