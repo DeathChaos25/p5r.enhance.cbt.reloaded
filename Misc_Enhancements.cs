@@ -15,6 +15,7 @@ using System.Net;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Text;
 using static p5r.enhance.cbt.reloaded.GameFunctions_Structs;
 using static p5r.enhance.cbt.reloaded.Utils;
@@ -108,6 +109,17 @@ namespace p5r.enhance.cbt.reloaded
 
         public unsafe delegate void JokerPortraitSelectDelegate(JokerPortraitSelectStruct* a1);
         static private IHook<JokerPortraitSelectDelegate> _hookJokerPortraitSelect;
+
+        public unsafe delegate bool TargetFunctionsBaseDelegate(SmartPointer_btl__Action* a1);
+        static private IHook<TargetFunctionsBaseDelegate> _hookAITARMINE;
+        static private IHook<TargetFunctionsBaseDelegate> _hookAITARHPMAX;
+        static private IHook<TargetFunctionsBaseDelegate> _hookAITARHPMIN;
+        static private IHook<TargetFunctionsBaseDelegate> _hookAITARLVMIN;
+        static private IHook<TargetFunctionsBaseDelegate> _hookAITARMYAI;
+        static private IHook<TargetFunctionsBaseDelegate> _hookAITARRND;
+
+        public unsafe delegate bool AITARBADInternalDelegate(SmartPointer_btl__Action* a1, int a2, nint a3, nint a4, bool a5, short a6, nint a7);
+        static private IHook<AITARBADInternalDelegate> _hookAITARBAD;
 
         public static byte rndTitle = 0;
 
@@ -480,6 +492,53 @@ namespace p5r.enhance.cbt.reloaded
             SigScan("66 6f 6e 74 2f 73 65 6c 65 63 74 2f 63 75 74 69 6e 5f 25 30 33 64 5f 25 30 33 64 2e 64 64 73 00 66 6f 6e 74 2f 61 73 73 69 73 74 2f 74 75 62 75 79 61 6b 69 2e 70 6c 67 00", "font/select/cutin_%03d_%03d.dds", address =>
             {
                 fontSelectStringAddr = address;
+            });
+
+            // this is all needed to fix item use targetting
+
+            // v1.0.4 = 0x1407a2f70
+            SigScan("48 89 5C 24 ?? 48 89 7C 24 ?? 4C 89 64 24 ?? 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC A0 00 00 00", "AI_TAR_MINE internal", address =>
+            {
+                _hookAITARMINE = _hooks.CreateHook<TargetFunctionsBaseDelegate>(AITARMINE, address).Activate();
+            });
+
+            // v1.0.4 = 0x140793a60
+            SigScan("89 54 24 ?? 48 89 4C 24 ?? 55 53 56 57 41 54 41 55 41 56 48 8D 6C 24 ??", "AI_TAR_BAD internal", address =>
+            {
+                _hookAITARBAD = _hooks.CreateHook<AITARBADInternalDelegate>(AITARBAD, address).Activate();
+            });
+
+            // v1.0.4 = 0x140791860 -> 0x140791bd0
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 4C 89 64 24 ?? 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC A0 00 00 00 48 8B 51 ??", "AI_TAR_HPMAX internal", address =>
+            {
+
+                address += 0x370;
+                // AI_TAR_HPMAX and AI_TAR_MPMAX are identical, causing sigscans to be impossible, thanks atlus!!!!!
+                _hookAITARHPMAX = _hooks.CreateHook<TargetFunctionsBaseDelegate>(AITARHPMAX, address).Activate();
+            });
+
+            // v1.0.4 = 0x140794a50
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 55 41 54 41 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC 00 01 00 00 48 8B 51 ?? 48 8D 05 ?? ?? ?? ?? 45 33 E4 48 89 45 ?? 0F 57 C0 4C 89 65 ?? 48 83 C2 40 4C 89 65 ?? 4C 8D 2D ?? ?? ?? ?? 4C 89 65 ?? 4C 8D 05 ?? ?? ?? ?? 4C 89 6C 24 ?? F3 0F 7F 44 24 ?? 4C 89 6D ?? 4C 8B F9 F3 0F 7F 45 ?? 4C 89 45 ?? 4C 89 65 ?? 48 8B 42 ?? 44 89 65 ?? F3 0F 7F 45 ?? 48 85 C0 74 ?? 48 89 45 ?? 48 8D 4D ?? 48 89 55 ?? 48 8B 42 ?? 48 89 48 ?? 48 8D 45 ?? 48 89 42 ?? 48 8B 4D ?? EB ?? 48 8D 45 ?? 48 8B CA 48 89 42 ?? 48 89 55 ?? 48 8B 5A ?? 48 8B 45 ?? 48 89 5D ?? 4C 89 45 ?? 48 85 C9 75 ?? 48 85 C0 75 ?? 48 85 DB 74 ?? 48 8B 03 8D 51 ?? 48 8B CB FF 10 48 8B 45 ?? 48 8B 4D ?? 4C 89 65 ?? EB ?? 48 89 41 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 4D ?? 48 89 48 ?? 49 8B C4 49 8B CC 48 89 45 ?? 48 89 4D ?? 48 8D 35 ?? ?? ?? ?? 48 89 75 ?? 48 85 C9 75 ?? 48 85 C0 74 ?? EB ?? 48 89 41 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 4D ?? 48 89 48 ?? 4C 89 65 ?? 4C 89 65 ?? 4C 8D 73 ?? 49 8B CE 4C 89 75 ?? E8 ?? ?? ?? ?? 44 8B 53 ?? 48 8D 53 ?? 44 8B 4B ?? 48 8D 4D ?? 0F 57 C0 4C 89 6D ?? F3 0F 7F 45 ?? 4C 89 65 ?? E8 ?? ?? ?? ?? 48 8B 53 ?? 4C 8D 45 ?? 44 88 64 24 ?? 48 8D 4D ?? 44 89 54 24 ?? E8 ?? ?? ?? ?? 0F B7 43 ?? 48 8D 0C ?? 48 03 C9 48 8D 05 ?? ?? ?? ?? 44 38 24 ?? 0F 84 ?? ?? ?? ?? 48 8B 75 ?? 48 8B DE 48 85 F6 0F 84 ?? ?? ?? ?? 0F 1F 40 00 0F 1F 84 ?? 00 00 00 00 48 8D 7B ?? 48 8B 1B 48 8D 44 24 ?? 48 3B F8 74 ?? 48 8B 45 ?? 48 39 47 ?? 74 ?? 48 8D 4C 24 ?? E8 ?? ?? ?? ?? EB ?? 48 8B 4C 24 ?? 48 8B 45 ?? 48 85 C9 75 ?? 48 85 C0 74 ?? EB ?? 48 89 41 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 4C 24 ?? 48 89 48 ?? 4C 89 65 ?? 4C 89 64 24 ?? 48 8B D7 48 8D 4C 24 ?? E8 ?? ?? ?? ?? 48 8B 45 ?? 4C 89 65 ?? 4C 89 6D ?? 48 85 C0 74 ?? 48 8D 4C 24 ?? 48 89 45 ?? 48 89 4D ?? 48 8D 4D ?? 48 89 48 ?? 48 8D 45 ?? 48 89 45 ?? EB ?? 48 8D 45 ?? 48 89 45 ?? 48 8D 44 24 ?? 48 89 45 ?? 48 8B 45 ?? 48 8D 55 ?? 49 8B CE 48 89 45 ?? E8 ?? ?? ?? ?? 48 8D 4D ?? E8 ?? ?? ?? ?? 48 85 DB 0F 85 ?? ?? ?? ?? 48 8B 55 ?? 48 8B 45 ?? 48 85 D2 75 ?? 48 85 C0 75 ?? 48 8B 4D ?? 48 85 C9 74 ?? 48 8B 01 BA 01 00 00 00 FF 10 EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 55 ?? 48 89 50 ?? 48 8B 45 ?? 48 8B 55 ?? 4C 8D 0D ?? ?? ?? ?? 4C 89 4D ?? 48 85 D2 75 ?? 48 85 C0 74 ?? EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 55 ?? 48 89 50 ?? 4C 8B 44 24 ?? 48 8B 45 ?? 4C 89 6C 24 ?? 4D 85 C0 75 ?? 48 85 C0 75 ?? 48 8B 4D ?? 48 85 C9 74 ?? 48 8B 01 41 8D 50 ?? FF 10 48 8B 45 ?? 4C 8D 0D ?? ?? ?? ?? 4C 8B 44 24 ?? 4C 89 65 ?? EB ?? 49 89 40 ?? 48 8B 45 ?? 48 85 C0 74 ?? 4C 8B 44 24 ?? 4C 89 40 ?? 49 8B C4 4C 89 64 24 ?? 48 89 45 ?? 4D 8B C4 4C 89 4C 24 ?? 4D 85 C0 75 ?? 48 85 C0 74 ?? EB ?? 49 89 40 ?? 48 8B 45 ?? 48 85 C0 74 ?? 4C 8B 44 24 ?? 4C 89 40 ?? 4C 89 65 ?? 4C 89 64 24 ?? 48 85 F6 0F 84 ?? ?? ?? ?? 0F 1F 00 48 8B 3E 48 8D 4E ?? E8 ?? ?? ?? ?? 48 8D 4E ?? 4C 89 66 ?? E8 ?? ?? ?? ?? 48 8B CE E8 ?? ?? ?? ?? 48 8B F7 48 85 FF 75 ?? E9 ?? ?? ?? ?? 0F 57 C0 4C 89 6D ?? 48 8D 53 ?? 4C 89 65 ?? 48 8D 4D ?? F3 0F 7F 45 ?? E8 ?? ?? ?? ?? 48 8D 55 ?? 48 8D 4D ?? E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 48 8B 55 ?? 48 8B 45 ?? 48 85 D2 75 ?? 48 85 C0 75 ?? 48 8B 4D ?? 48 85 C9 74 ?? 48 8B 01 BA 01 00 00 00 FF 10 EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 55 ?? 48 89 50 ?? 48 8B 45 ?? 48 8B 55 ?? 48 89 75 ?? 48 85 D2 75 ?? 48 85 C0 74 ?? EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 55 ?? 48 89 50 ?? 48 8B 54 24 ?? 48 8B 45 ?? 4C 89 6C 24 ?? 48 85 D2 75 ?? 48 85 C0 75 ?? 48 8B 4D ?? 48 85 C9 74 ?? 48 8B 01 BA 01 00 00 00 FF 10 48 8B 45 ?? 48 8B 54 24 ?? 4C 89 65 ?? EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 54 24 ?? 48 89 50 ?? 49 8B C4 49 8B D4 48 89 45 ?? 48 89 54 24 ?? 48 89 74 24 ?? 48 85 D2 75 ?? 48 85 C0 74 ?? EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 54 24 ?? 48 89 50 ?? 4C 89 65 ?? 4C 89 64 24 ?? 48 8B 75 ?? 48 85 F6 0F 84 ?? ?? ?? ?? 66 66 66 0F 1F 84 ?? 00 00 00 00 48 8B 3E 48 8D 4E ?? E8 ?? ?? ?? ?? 48 8D 4E ?? 4C 89 66 ?? E8 ?? ?? ?? ?? 48 8B CE E8 ?? ?? ?? ?? 48 8B F7 48 85 FF 75 ?? E9 ?? ?? ?? ?? 48 8B 7D ?? BE FF FF FF 7F 48 85 FF 0F 84 ?? ?? ?? ?? 4C 8D 35 ?? ?? ?? ?? 66 0F 1F 84 ?? 00 00 00 00 48 8D 5F ?? 48 8B 3F 48 8D 44 24 ?? 48 3B D8 74 ?? 48 8B 45 ?? 48 39 43 ?? 74 ?? 48 8D 4C 24 ?? E8 ?? ?? ?? ?? EB ?? 48 8B 4C 24 ?? 48 8B 45 ?? 48 85 C9 75 ?? 48 85 C0 74 ?? EB ?? 48 89 41 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 4C 24 ?? 48 89 48 ?? 4C 89 65 ?? 4C 89 64 24 ?? 48 8B D3 48 8D 4C 24 ?? E8 ?? ?? ?? ?? 48 8B 45 ?? 4C 89 65 ?? 4C 89 6D ?? 48 85 C0 74 ?? 48 8D 4C 24 ?? 48 89 45 ?? 48 89 4D ?? 48 8D 4D ?? 48 89 48 ?? 48 8D 45 ?? 48 89 45 ?? EB ?? 48 8D 45 ?? 48 89 45 ?? 48 8D 44 24 ?? 48 89 45 ?? 48 8B 45 ?? 48 8D 4D ?? 0F 57 C0 48 89 45 ?? 49 8B D7 4C 89 6D ?? F3 0F 7F 45 ?? 4C 89 65 ?? E8 ?? ?? ?? ?? 48 8D 4D ?? E8 ?? ?? ?? ?? 48 8D 4D ?? E8 ?? ?? ?? ?? 49 8B 57 ?? 48 8D 4D ?? 0F 57 C0 4C 89 75 ?? 48 83 C2 40 4C 89 65 ?? F3 0F 7F 45 ?? E8 ?? ?? ?? ?? 48 8B 55 ?? 4C 8D 0D ?? ?? ?? ?? 0F 57 C0 4C 89 4D ?? 48 83 C2 18 4C 89 65 ?? 48 8D 4D ?? F3 0F 7F 45 ?? E8 ?? ?? ?? ?? 48 8B 4D ?? 48 8B 41 ??", "AI_TAR_HPMIN internal", address =>
+            {
+                _hookAITARHPMIN = _hooks.CreateHook<TargetFunctionsBaseDelegate>(AITARHPMIN, address).Activate();
+            });
+
+            // v1.0.4 = 0x140791070
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 55 41 54 41 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC 00 01 00 00 48 8B 51 ?? 48 8D 05 ?? ?? ?? ?? 45 33 E4 48 89 45 ?? 0F 57 C0 4C 89 65 ?? 48 83 C2 40 4C 89 65 ?? 4C 8D 2D ?? ?? ?? ?? 4C 89 65 ?? 4C 8D 05 ?? ?? ?? ?? 4C 89 6C 24 ?? F3 0F 7F 44 24 ?? 4C 89 6D ?? 4C 8B F9 F3 0F 7F 45 ?? 4C 89 45 ?? 4C 89 65 ?? 48 8B 42 ?? 44 89 65 ?? F3 0F 7F 45 ?? 48 85 C0 74 ?? 48 89 45 ?? 48 8D 4D ?? 48 89 55 ?? 48 8B 42 ?? 48 89 48 ?? 48 8D 45 ?? 48 89 42 ?? 48 8B 4D ?? EB ?? 48 8D 45 ?? 48 8B CA 48 89 42 ?? 48 89 55 ?? 48 8B 5A ?? 48 8B 45 ?? 48 89 5D ?? 4C 89 45 ?? 48 85 C9 75 ?? 48 85 C0 75 ?? 48 85 DB 74 ?? 48 8B 03 8D 51 ?? 48 8B CB FF 10 48 8B 45 ?? 48 8B 4D ?? 4C 89 65 ?? EB ?? 48 89 41 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 4D ?? 48 89 48 ?? 49 8B C4 49 8B CC 48 89 45 ?? 48 89 4D ?? 48 8D 35 ?? ?? ?? ?? 48 89 75 ?? 48 85 C9 75 ?? 48 85 C0 74 ?? EB ?? 48 89 41 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 4D ?? 48 89 48 ?? 4C 89 65 ?? 4C 89 65 ?? 4C 8D 73 ?? 49 8B CE 4C 89 75 ?? E8 ?? ?? ?? ?? 44 8B 53 ?? 48 8D 53 ?? 44 8B 4B ?? 48 8D 4D ?? 0F 57 C0 4C 89 6D ?? F3 0F 7F 45 ?? 4C 89 65 ?? E8 ?? ?? ?? ?? 48 8B 53 ?? 4C 8D 45 ?? 44 88 64 24 ?? 48 8D 4D ?? 44 89 54 24 ?? E8 ?? ?? ?? ?? 0F B7 43 ?? 48 8D 0C ?? 48 03 C9 48 8D 05 ?? ?? ?? ?? 44 38 24 ?? 0F 84 ?? ?? ?? ?? 48 8B 75 ?? 48 8B DE 48 85 F6 0F 84 ?? ?? ?? ?? 0F 1F 40 00 0F 1F 84 ?? 00 00 00 00 48 8D 7B ?? 48 8B 1B 48 8D 44 24 ?? 48 3B F8 74 ?? 48 8B 45 ?? 48 39 47 ?? 74 ?? 48 8D 4C 24 ?? E8 ?? ?? ?? ?? EB ?? 48 8B 4C 24 ?? 48 8B 45 ?? 48 85 C9 75 ?? 48 85 C0 74 ?? EB ?? 48 89 41 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 4C 24 ?? 48 89 48 ?? 4C 89 65 ?? 4C 89 64 24 ?? 48 8B D7 48 8D 4C 24 ?? E8 ?? ?? ?? ?? 48 8B 45 ?? 4C 89 65 ?? 4C 89 6D ?? 48 85 C0 74 ?? 48 8D 4C 24 ?? 48 89 45 ?? 48 89 4D ?? 48 8D 4D ?? 48 89 48 ?? 48 8D 45 ?? 48 89 45 ?? EB ?? 48 8D 45 ?? 48 89 45 ?? 48 8D 44 24 ?? 48 89 45 ?? 48 8B 45 ?? 48 8D 55 ?? 49 8B CE 48 89 45 ?? E8 ?? ?? ?? ?? 48 8D 4D ?? E8 ?? ?? ?? ?? 48 85 DB 0F 85 ?? ?? ?? ?? 48 8B 55 ?? 48 8B 45 ?? 48 85 D2 75 ?? 48 85 C0 75 ?? 48 8B 4D ?? 48 85 C9 74 ?? 48 8B 01 BA 01 00 00 00 FF 10 EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 55 ?? 48 89 50 ?? 48 8B 45 ?? 48 8B 55 ?? 4C 8D 0D ?? ?? ?? ?? 4C 89 4D ?? 48 85 D2 75 ?? 48 85 C0 74 ?? EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 55 ?? 48 89 50 ?? 4C 8B 44 24 ?? 48 8B 45 ?? 4C 89 6C 24 ?? 4D 85 C0 75 ?? 48 85 C0 75 ?? 48 8B 4D ?? 48 85 C9 74 ?? 48 8B 01 41 8D 50 ?? FF 10 48 8B 45 ?? 4C 8D 0D ?? ?? ?? ?? 4C 8B 44 24 ?? 4C 89 65 ?? EB ?? 49 89 40 ?? 48 8B 45 ?? 48 85 C0 74 ?? 4C 8B 44 24 ?? 4C 89 40 ?? 49 8B C4 4C 89 64 24 ?? 48 89 45 ?? 4D 8B C4 4C 89 4C 24 ?? 4D 85 C0 75 ?? 48 85 C0 74 ?? EB ?? 49 89 40 ?? 48 8B 45 ?? 48 85 C0 74 ?? 4C 8B 44 24 ?? 4C 89 40 ?? 4C 89 65 ?? 4C 89 64 24 ?? 48 85 F6 0F 84 ?? ?? ?? ?? 0F 1F 00 48 8B 3E 48 8D 4E ?? E8 ?? ?? ?? ?? 48 8D 4E ?? 4C 89 66 ?? E8 ?? ?? ?? ?? 48 8B CE E8 ?? ?? ?? ?? 48 8B F7 48 85 FF 75 ?? E9 ?? ?? ?? ?? 0F 57 C0 4C 89 6D ?? 48 8D 53 ?? 4C 89 65 ?? 48 8D 4D ?? F3 0F 7F 45 ?? E8 ?? ?? ?? ?? 48 8D 55 ?? 48 8D 4D ?? E8 ?? ?? ?? ?? 84 C0 0F 84 ?? ?? ?? ?? 48 8B 55 ?? 48 8B 45 ?? 48 85 D2 75 ?? 48 85 C0 75 ?? 48 8B 4D ?? 48 85 C9 74 ?? 48 8B 01 BA 01 00 00 00 FF 10 EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 55 ?? 48 89 50 ?? 48 8B 45 ?? 48 8B 55 ?? 48 89 75 ?? 48 85 D2 75 ?? 48 85 C0 74 ?? EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 55 ?? 48 89 50 ?? 48 8B 54 24 ?? 48 8B 45 ?? 4C 89 6C 24 ?? 48 85 D2 75 ?? 48 85 C0 75 ?? 48 8B 4D ?? 48 85 C9 74 ?? 48 8B 01 BA 01 00 00 00 FF 10 48 8B 45 ?? 48 8B 54 24 ?? 4C 89 65 ?? EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 54 24 ?? 48 89 50 ?? 49 8B C4 49 8B D4 48 89 45 ?? 48 89 54 24 ?? 48 89 74 24 ?? 48 85 D2 75 ?? 48 85 C0 74 ?? EB ?? 48 89 42 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 54 24 ?? 48 89 50 ?? 4C 89 65 ?? 4C 89 64 24 ?? 48 8B 75 ?? 48 85 F6 0F 84 ?? ?? ?? ?? 66 66 66 0F 1F 84 ?? 00 00 00 00 48 8B 3E 48 8D 4E ?? E8 ?? ?? ?? ?? 48 8D 4E ?? 4C 89 66 ?? E8 ?? ?? ?? ?? 48 8B CE E8 ?? ?? ?? ?? 48 8B F7 48 85 FF 75 ?? E9 ?? ?? ?? ?? 48 8B 7D ?? BE FF FF FF 7F 48 85 FF 0F 84 ?? ?? ?? ?? 4C 8D 35 ?? ?? ?? ?? 66 0F 1F 84 ?? 00 00 00 00 48 8D 5F ?? 48 8B 3F 48 8D 44 24 ?? 48 3B D8 74 ?? 48 8B 45 ?? 48 39 43 ?? 74 ?? 48 8D 4C 24 ?? E8 ?? ?? ?? ?? EB ?? 48 8B 4C 24 ?? 48 8B 45 ?? 48 85 C9 75 ?? 48 85 C0 74 ?? EB ?? 48 89 41 ?? 48 8B 45 ?? 48 85 C0 74 ?? 48 8B 4C 24 ?? 48 89 48 ?? 4C 89 65 ?? 4C 89 64 24 ?? 48 8B D3 48 8D 4C 24 ?? E8 ?? ?? ?? ?? 48 8B 45 ?? 4C 89 65 ?? 4C 89 6D ?? 48 85 C0 74 ?? 48 8D 4C 24 ?? 48 89 45 ?? 48 89 4D ?? 48 8D 4D ?? 48 89 48 ?? 48 8D 45 ?? 48 89 45 ?? EB ?? 48 8D 45 ?? 48 89 45 ?? 48 8D 44 24 ?? 48 89 45 ?? 48 8B 45 ?? 48 8D 4D ?? 0F 57 C0 48 89 45 ?? 49 8B D7 4C 89 6D ?? F3 0F 7F 45 ?? 4C 89 65 ?? E8 ?? ?? ?? ?? 48 8D 4D ?? E8 ?? ?? ?? ?? 48 8D 4D ?? E8 ?? ?? ?? ?? 49 8B 57 ?? 48 8D 4D ?? 0F 57 C0 4C 89 75 ?? 48 83 C2 40 4C 89 65 ?? F3 0F 7F 45 ?? E8 ?? ?? ?? ?? 48 8B 55 ?? 4C 8D 0D ?? ?? ?? ?? 0F 57 C0 4C 89 4D ?? 48 83 C2 18 4C 89 65 ?? 48 8D 4D ?? F3 0F 7F 45 ?? E8 ?? ?? ?? ?? 48 8B 4D ?? 48 8B 49 ??", "AI_TAR_LVMIN internal", address =>
+            {
+                _hookAITARLVMIN = _hooks.CreateHook<TargetFunctionsBaseDelegate>(AITARLVMIN, address).Activate();
+            });
+
+            // v1.0.4 = 0x14078f9f0
+            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 55 41 54 41 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC 20 01 00 00 48 8B 51 ??", "AI_TAR_MYAI internal", address =>
+            {
+                _hookAITARMYAI = _hooks.CreateHook<TargetFunctionsBaseDelegate>(AITARMYAI, address).Activate();
+            });
+
+            // v1.0.4 = 0x140795240
+            SigScan("48 89 5C 24 ?? 48 89 4C 24 ?? 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 ?? ?? ?? ?? 48 81 EC 10 03 00 00", "AI_TAR_RND internal", address =>
+            {
+                _hookAITARRND = _hooks.CreateHook<TargetFunctionsBaseDelegate>(AITARRND, address).Activate();
             });
 
             /*SigScan("48 89 5C 24 ?? 48 89 6C 24 ?? 56 57 41 56 48 83 EC 70 44 0F B7 59 ??", "DoesUnitHaveSkillOrAccessoryGear", address => // 
@@ -2461,6 +2520,265 @@ namespace p5r.enhance.cbt.reloaded
             }
         }
 
+        public bool AITARMINE(SmartPointer_btl__Action* a1)
+        {
+            LogDebugFunc("AI_TAR_MINE: internal fix run");
+            bool result = false;
+            bool wasFixed = false;
+            ushort item_id = 0x3000;
+
+            var datUnit = getDatUnitFromParticipate(a1->participatePtr);
+
+            LogDebugFunc($"AI_TAR_MINE: Player {datUnit->unitID} AI using AI_TAR_MINE");
+
+            var BattleAI = a1->participatePtr->ptrToBtlAI.ptrToAI;
+
+            if (BattleAI != null && datUnit->unitType == 1 && BattleAI->act_type == 2)
+            {
+                LogDebugFunc($"AI_TAR_MINE: Fixed AI targetting for item 0x{BattleAI->skillID:X4}");
+                item_id = (ushort)BattleAI->skillID;
+                BattleAI->skillID = _gameFunctions.GetSkillIDFromItemID((ushort)BattleAI->skillID);
+                // BattleAI->act_type = 1;
+                wasFixed = true;
+            }
+            else
+            {
+                LogDebugFunc($"AI_TAR_MINE: Could not match to item use; acttype {BattleAI->act_type} - skill 0x{BattleAI->skillID:X4}");
+            }
+
+            result = _hookAITARMINE.OriginalFunction(a1);
+
+            if (wasFixed)
+            {
+                BattleAI->skillID = item_id;
+                // BattleAI->act_type = 2;
+            }
+
+            return result;
+        }
+
+        public bool AITARBAD(SmartPointer_btl__Action* a1, int a2, nint a3, nint a4, bool a5, short a6, nint a7)
+        {
+            LogDebugFunc("AI_TAR_BAD: internal fix run");
+            bool result = false;
+            bool wasFixed = false;
+            ushort item_id = 0x3000;
+
+            var datUnit = getDatUnitFromParticipate(a1->participatePtr);
+
+            LogDebugFunc($"AI_TAR_BAD: Player {datUnit->unitID} AI using AI_TAR_BAD");
+
+            var BattleAI = a1->participatePtr->ptrToBtlAI.ptrToAI;
+
+            if (BattleAI != null && datUnit->unitType == 1 && BattleAI->act_type == 2)
+            {
+                LogDebugFunc($"AI_TAR_BAD: Fixed AI targetting for item 0x{BattleAI->skillID:X4}");
+                item_id = (ushort)BattleAI->skillID;
+                BattleAI->skillID = _gameFunctions.GetSkillIDFromItemID((ushort)BattleAI->skillID);
+                // BattleAI->act_type = 1;
+                wasFixed = true;
+            }
+            else
+            {
+                LogDebugFunc($"AI_TAR_BAD: Could not match to item use");
+            }
+
+            result = _hookAITARBAD.OriginalFunction(a1, a2, a3, a4, a5, a6, a7);
+
+            if (wasFixed)
+            {
+                BattleAI->skillID = item_id;
+                // BattleAI->act_type = 2;
+            }
+
+            return result;
+        }
+
+        public bool AITARHPMAX(SmartPointer_btl__Action* a1)
+        {
+            LogDebugFunc("AI_TAR_HPMAX: internal fix run");
+            bool result = false;
+            bool wasFixed = false;
+            ushort item_id = 0x3000;
+
+            var datUnit = getDatUnitFromParticipate(a1->participatePtr);
+
+            LogDebugFunc($"AI_TAR_HPMAX: Player {datUnit->unitID} AI using AI_TAR_HPMAX");
+
+            var BattleAI = a1->participatePtr->ptrToBtlAI.ptrToAI;
+
+            if (BattleAI != null && datUnit->unitType == 1 && BattleAI->act_type == 2)
+            {
+                LogDebugFunc($"AI_TAR_HPMAX: Fixed AI targetting for item 0x{BattleAI->skillID:X4}");
+                item_id = (ushort)BattleAI->skillID;
+                BattleAI->skillID = _gameFunctions.GetSkillIDFromItemID((ushort)BattleAI->skillID);
+                // BattleAI->act_type = 1;
+                wasFixed = true;
+            }
+            else
+            {
+                LogDebugFunc($"AI_TAR_HPMAX: Could not match to item use; acttype {BattleAI->act_type} - skill 0x{BattleAI->skillID:X4}");
+            }
+
+            result = _hookAITARHPMAX.OriginalFunction(a1);
+
+            if (wasFixed)
+            {
+                BattleAI->skillID = item_id;
+                // BattleAI->act_type = 2;
+            }
+
+            return result;
+        }
+
+        public bool AITARHPMIN(SmartPointer_btl__Action* a1)
+        {
+            LogDebugFunc("AI_TAR_HPMIN: internal fix run");
+            bool result = false;
+            bool wasFixed = false;
+            ushort item_id = 0x3000;
+
+            var datUnit = getDatUnitFromParticipate(a1->participatePtr);
+
+            LogDebugFunc($"AI_TAR_HPMIN: Player {datUnit->unitID} AI using AI_TAR_HPMIN");
+
+            var BattleAI = a1->participatePtr->ptrToBtlAI.ptrToAI;
+
+            if (BattleAI != null && datUnit->unitType == 1 && BattleAI->act_type == 2)
+            {
+                LogDebugFunc($"AI_TAR_HPMIN: Fixed AI targetting for item 0x{BattleAI->skillID:X4}");
+                item_id = (ushort)BattleAI->skillID;
+                BattleAI->skillID = _gameFunctions.GetSkillIDFromItemID((ushort)BattleAI->skillID);
+                // BattleAI->act_type = 1;
+                wasFixed = true;
+            }
+            else
+            {
+                LogDebugFunc($"AI_TAR_HPMIN: Could not match to item use; acttype {BattleAI->act_type} - skill 0x{BattleAI->skillID:X4}");
+            }
+
+            result = _hookAITARHPMIN.OriginalFunction(a1);
+
+            if (wasFixed)
+            {
+                BattleAI->skillID = item_id;
+                // BattleAI->act_type = 2;
+            }
+
+            return result;
+        }
+
+        public bool AITARLVMIN(SmartPointer_btl__Action* a1)
+        {
+            LogDebugFunc("AI_TAR_LVMIN: internal fix run");
+            bool result = false;
+            bool wasFixed = false;
+            ushort item_id = 0x3000;
+
+            var datUnit = getDatUnitFromParticipate(a1->participatePtr);
+
+            LogDebugFunc($"AI_TAR_LVMIN: Player {datUnit->unitID} AI using AI_TAR_LVMIN");
+
+            var BattleAI = a1->participatePtr->ptrToBtlAI.ptrToAI;
+
+            if (BattleAI != null && datUnit->unitType == 1 && BattleAI->act_type == 2)
+            {
+                LogDebugFunc($"AI_TAR_LVMIN: Fixed AI targetting for item 0x{BattleAI->skillID:X4}");
+                item_id = (ushort)BattleAI->skillID;
+                BattleAI->skillID = _gameFunctions.GetSkillIDFromItemID((ushort)BattleAI->skillID);
+                // BattleAI->act_type = 1;
+                wasFixed = true;
+            }
+            else
+            {
+                LogDebugFunc($"AI_TAR_LVMIN: Could not match to item use; acttype {BattleAI->act_type} - skill 0x{BattleAI->skillID:X4}");
+            }
+
+            result = _hookAITARLVMIN.OriginalFunction(a1);
+
+            if (wasFixed)
+            {
+                BattleAI->skillID = item_id;
+                // BattleAI->act_type = 2;
+            }
+
+            return result;
+        }
+
+        public bool AITARMYAI(SmartPointer_btl__Action* a1)
+        {
+            LogDebugFunc("AI_TAR_MYAI: internal fix run");
+            bool result = false;
+            bool wasFixed = false;
+            ushort item_id = 0x3000;
+
+            var datUnit = getDatUnitFromParticipate(a1->participatePtr);
+
+            LogDebugFunc($"AI_TAR_MYAI: Player {datUnit->unitID} AI using AI_TAR_MYAI");
+
+            var BattleAI = a1->participatePtr->ptrToBtlAI.ptrToAI;
+
+            if (BattleAI != null && datUnit->unitType == 1 && BattleAI->act_type == 2)
+            {
+                LogDebugFunc($"AI_TAR_MYAI: Fixed AI targetting for item 0x{BattleAI->skillID:X4}");
+                item_id = (ushort)BattleAI->skillID;
+                BattleAI->skillID = _gameFunctions.GetSkillIDFromItemID((ushort)BattleAI->skillID);
+                // BattleAI->act_type = 1;
+                wasFixed = true;
+            }
+            else
+            {
+                LogDebugFunc($"AI_TAR_MYAI: Could not match to item use; acttype {BattleAI->act_type} - skill 0x{BattleAI->skillID:X4}");
+            }
+
+            result = _hookAITARMYAI.OriginalFunction(a1);
+
+            if (wasFixed)
+            {
+                BattleAI->skillID = item_id;
+                // BattleAI->act_type = 2;
+            }
+
+            return result;
+        }
+
+        public bool AITARRND(SmartPointer_btl__Action* a1)
+        {
+            LogDebugFunc("AI_TAR_RND: internal fix run");
+            bool result = false;
+            bool wasFixed = false;
+            ushort item_id = 0x3000;
+
+            var datUnit = getDatUnitFromParticipate(a1->participatePtr);
+
+            LogDebugFunc($"AI_TAR_RND: Player {datUnit->unitID} AI using AI_TAR_RND");
+
+            var BattleAI = a1->participatePtr->ptrToBtlAI.ptrToAI;
+
+            if (BattleAI != null && datUnit->unitType == 1 && BattleAI->act_type == 2)
+            {
+                LogDebugFunc($"AI_TAR_RND: Fixed AI targetting for item 0x{BattleAI->skillID:X4}");
+                item_id = (ushort)BattleAI->skillID;
+                BattleAI->skillID = _gameFunctions.GetSkillIDFromItemID((ushort)BattleAI->skillID);
+                // BattleAI->act_type = 1;
+                wasFixed = true;
+            }
+            else
+            {
+                LogDebugFunc($"AI_TAR_RND: Could not match to item use; acttype {BattleAI->act_type} - skill 0x{BattleAI->skillID:X4}");
+            }
+
+            result = _hookAITARRND.OriginalFunction(a1);
+
+            if (wasFixed)
+            {
+                BattleAI->skillID = item_id;
+                // BattleAI->act_type = 2;
+            }
+
+            return result;
+        }
+
         public int CheckFutabaUltimateSupportUse(nint a1, nint a2, nint a3)
         {
             LogDebugFunc("CheckFutabaUltimateSupportUse called");
@@ -2622,12 +2940,12 @@ namespace p5r.enhance.cbt.reloaded
         //
         public int GetNumberOfEnemyUnitsAlive(Participate* a1)
         {
-            if (a1 == null || a1->field40.ptrToAI == null || a1->field40.ptrToAI->PtrToPackage == null)
+            if (a1 == null || a1->ptrToBtlAI.ptrToAI == null || a1->ptrToBtlAI.ptrToAI->PtrToPackage == null)
             {
                 LogDebug("Error: Participate or AI package is null");
                 return -1;
             }
-            return GetNumberOfEnemyUnitsAlive(a1->field40.ptrToAI->PtrToPackage);
+            return GetNumberOfEnemyUnitsAlive(a1->ptrToBtlAI.ptrToAI->PtrToPackage);
         }
 
         public int GetNumberOfEnemyUnitsAlive(Package_combat* a1)
@@ -2657,11 +2975,11 @@ namespace p5r.enhance.cbt.reloaded
 
         public unsafe List<nint> GetDatUnitOfTypeAndIDFromParticipate(Participate* a1, int unitType, int unitID)
         {
-            if (a1 == null || a1->field40.ptrToAI == null || a1->field40.ptrToAI->PtrToPackage == null)
+            if (a1 == null || a1->ptrToBtlAI.ptrToAI == null || a1->ptrToBtlAI.ptrToAI->PtrToPackage == null)
             {
                 return null;
             }
-            return GetDatUnitOfTypeAndIDFromPackage(a1->field40.ptrToAI->PtrToPackage, unitType, unitID);
+            return GetDatUnitOfTypeAndIDFromPackage(a1->ptrToBtlAI.ptrToAI->PtrToPackage, unitType, unitID);
         }
 
         public unsafe List<nint> GetDatUnitOfTypeAndIDFromPackage(Package_combat* a1, int unitType, int unitID)
@@ -2691,11 +3009,11 @@ namespace p5r.enhance.cbt.reloaded
 
         public unsafe List<nint> GetDatUnitsOfTypeFromParticipate(Participate* a1, int unitType)
         {
-            if (a1 == null || a1->field40.ptrToAI == null || a1->field40.ptrToAI->PtrToPackage == null)
+            if (a1 == null || a1->ptrToBtlAI.ptrToAI == null || a1->ptrToBtlAI.ptrToAI->PtrToPackage == null)
             {
                 return null;
             }
-            return GetDatUnitsOfTypeFromPackage(a1->field40.ptrToAI->PtrToPackage, unitType);
+            return GetDatUnitsOfTypeFromPackage(a1->ptrToBtlAI.ptrToAI->PtrToPackage, unitType);
         }
 
         public unsafe List<nint> GetDatUnitsOfTypeFromPackage(Package_combat* a1, int unitType)

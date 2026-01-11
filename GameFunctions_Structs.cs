@@ -1809,7 +1809,7 @@ namespace p5r.enhance.cbt.reloaded
         {
             public nint functionPtr;
             public nint arg_count;
-            public unsafe byte* func_name; // char* func_name
+            public nint func_name; // char* func_name
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -2841,8 +2841,23 @@ namespace p5r.enhance.cbt.reloaded
         [StructLayout(LayoutKind.Sequential)]
         public unsafe struct btlAI
         {
-            public fixed byte Field00[0x68];
-            public Package_combat* PtrToPackage;
+            public nint Field00;                 // Field00
+            public nint Field08;                 // Field08
+            public nint Field10;                 // Field10
+            public nint Field18;                 // Field18
+            public nint Field20;                 // Field20
+            public nint Field28;                 // Field28
+            public int act_type;                 // Field30
+            public int gunfire;                  // Field34
+            public nint Field38;                 // Field38
+            public nint Field40;                 // Field40
+            public nint Field48;                 // Field48
+            public nint Field50;                 // Field50
+            public uint skillID;                 // Field58
+            public uint Field5C;                 // Field5C
+            public uint personaID;               // Field60
+            public uint Field64;                 // Field64
+            public Package_combat* PtrToPackage; // Field68
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -2862,7 +2877,7 @@ namespace p5r.enhance.cbt.reloaded
             public nint field10;
             public SmartPointer_btl__Unit field18;
             public nint field38;
-            public SmartPointer__btl_ai field40;
+            public SmartPointer__btl_ai ptrToBtlAI;
         }
 
         [StructLayout(LayoutKind.Sequential)]
