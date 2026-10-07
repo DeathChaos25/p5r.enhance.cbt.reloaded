@@ -10,6 +10,7 @@ using Reloaded.Memory.Interfaces;
 using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
 using Reloaded.Mod.Interfaces;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Reflection;
@@ -156,6 +157,9 @@ namespace p5r.enhance.cbt.reloaded
         private nint fontSelectStringAddr = 0;
 
         private static Package_combat* _packageCombat = null;
+
+        // dead player takes a turn bugfix
+        static readonly ConcurrentDictionary<nint, byte> _skipFlagged = new();
 
         private static int CurrentJokerPortraitID_Forced = 0;
 
@@ -2438,9 +2442,11 @@ namespace p5r.enhance.cbt.reloaded
                                  !isDatUnitDead(_gameFunctions.GetPlayerIDFromPartySlot(2)) ||
                                  !isDatUnitDead(_gameFunctions.GetPlayerIDFromPartySlot(3));
 
-            bool result = _hookAreBattleUnitsDead.OriginalFunction(a1);
+            bool original = _hookAreBattleUnitsDead.OriginalFunction(a1);
+            bool result = original;
+            bool isEnemy = isCurrentParticipateFromEnemy(a1);
 
-            if (isCurrentParticipateFromEnemy(a1))
+            if (isEnemy)
             {
                 if (GetNumberOfEnemyUnitsAlive(a1) == 0)
                 {
@@ -2448,7 +2454,7 @@ namespace p5r.enhance.cbt.reloaded
                     {
                         CheckJokerDeadAndRevive();
                     }
-                    return true;
+                    result = true;
                 }
             }
             else
@@ -2463,6 +2469,29 @@ namespace p5r.enhance.cbt.reloaded
                     {
                         result = true;
                     }
+                }
+            }
+
+            // Fix for "dead units still take a turn".
+            //
+            // Setting Bit27 or Bit28 of Participate.Field08 to 1 will cause the unit to be skipped in the turn order.
+            // We use Bit 28 rather than 27 because the engine uses Bit 27 in the formation code, which would cause 
+            // a visual bug where the dead unit was not considered part of the formation and their position could be
+            // used by a unit that was alive, causing an overlap of models
+            if (!isEnemy && a1 != null)
+            {
+                uint* field08 = (uint*)((byte*)a1 + 0x08);
+
+                if (original && !result)
+                {
+                    *field08 |= 0x10000000u;   // unit is dead, we return alive, this causes the bug and they gain a turn -> force-skip to prevent bug
+                    _skipFlagged[(nint)a1] = 0;
+                }
+                else if (!original && _skipFlagged.TryRemove((nint)a1, out _))
+                {
+                    // the game does not clear this bit when a unit is revived after we forcefully enabled it
+                    // so we need to clear it here to prevent the unit from being skipped in the turn order
+                    *field08 &= ~0x10000000u;
                 }
             }
 
@@ -2828,6 +2857,9 @@ namespace p5r.enhance.cbt.reloaded
 
         public void CheckJokerDeadAndRevive()
         {
+            // clear these to prevent false positives on the next battle
+            _skipFlagged.Clear();
+
             var Joker = _gameFunctions.getDatUnitFromPlayerID(1);
             if (Joker->currentHP == 0)
             {
