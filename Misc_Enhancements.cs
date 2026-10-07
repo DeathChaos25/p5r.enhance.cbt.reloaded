@@ -2140,7 +2140,7 @@ namespace p5r.enhance.cbt.reloaded
 
                 LogDebugFunc($"AI_ACT_ITEM called for item 0x{itemID:x4}");
 
-                UnitAI->skillID = itemID;
+                UnitAI->skillID = itemID + 0x3000;
                 UnitAI->act_type = 2; // item use type
 
                 flowApi.SetReturnValue(itemID);
