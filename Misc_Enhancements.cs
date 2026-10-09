@@ -355,15 +355,6 @@ namespace p5r.enhance.cbt.reloaded
                 memory.SafeWrite((nuint)address + 2, Bytes);
             });
 
-            // v1.0.0 = 0x140ea3e15
-            SigScan("E8 ?? ?? ?? ?? 84 C0 74 ?? C7 87 ?? ?? ?? ?? 01 00 00 00 B9 8A 00 00 00", "quick_evt_skip_enable_Sig", address =>
-            {
-                if (_configuration._020_QuickEventSkip)
-                {
-                    WriteReturn1(address);
-                }
-            });
-
             if (_configuration._013_NoGameOverOnJokerDie)
             {
                 SigScan("4C 8B DC 48 83 EC 48 F6 41 ?? 04", "areBattleUnitsDead_Sig", address =>

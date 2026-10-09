@@ -69,12 +69,6 @@ namespace p5r.enhance.cbt.reloaded.Configuration
         [Category("Toggles")]
         public bool _018_shaderWorkaround { get; set; } = true;
 
-        [DisplayName("Faster Event Fast Forward")]
-        [Description("Forces the screen crumple type of event skip to be usable in\nevery type of event and not just specific ones.")]
-        [DefaultValue(true)]
-        [Category("Toggles")]
-        public bool _020_QuickEventSkip { get; set; } = false;
-
         [DisplayName("New Extra Outfits")]
         [Description("Adds new Outfits via Costume Framework.\nThis option does not contain the new costumes for Joker.")]
         [DefaultValue(true)]
