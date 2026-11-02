@@ -110,9 +110,9 @@ namespace p5r.enhance.cbt.reloaded
         public delegate void FreeSmartPointerDelegate(nint a1);
         public FreeSmartPointerDelegate FreeSmartPointer;
 
-        /*[Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
+        [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
         public unsafe delegate void LoadSoundByCueIDCombatVoiceDelegate(nint a1, nint a2, int CueID, byte a4);
-        public LoadSoundByCueIDCombatVoiceDelegate LoadSoundByCueIDCombatVoice;*/
+        public LoadSoundByCueIDCombatVoiceDelegate LoadSoundByCueIDCombatVoice;
 
         [Function(Reloaded.Hooks.Definitions.X64.CallingConventions.Microsoft)]
         public delegate void SetCurrentTotalDayDelegate(ushort day);
@@ -227,11 +227,14 @@ namespace p5r.enhance.cbt.reloaded
                 GetAssistBustupID = _hooks.CreateWrapper<GetAssistBustupIDDelegate>(address, out _);
             });
 
-            /*// v1.0.0 = 0x1417e9bd0
-            SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 55 57 41 54 41 56 41 57 48 8B EC 48 83 EC 40 0F B7 41 ??", "LoadSoundByCueIDCombatVoice_Sig", address =>
+            // v1.0.4 = 0x140b5d260
+            // P5RCBT.dll hooks this function's entry, so scan a voice stub that jumps to it instead.
+            // The pattern is not unique, but every stub it matches jumps to this same function.
+            SigScan("45 33 C9 45 8D 41 0E E9 ?? ?? ?? ?? CC CC CC CC 45 33 C9 45 8D 41 0F E9", "LoadSoundByCueIDCombatVoice_Sig", address =>
             {
-                LoadSoundByCueIDCombatVoice = _hooks.CreateWrapper<LoadSoundByCueIDCombatVoiceDelegate>(address, out _);
-            });*/
+                var funcAddress = GetGlobalAddress(address + 8);
+                LoadSoundByCueIDCombatVoice = _hooks.CreateWrapper<LoadSoundByCueIDCombatVoiceDelegate>((long)funcAddress, out _);
+            });
 
             // v1.0.0 = 0x1406eb08e
             SigScan("E8 ?? ?? ?? ?? F6 00 01 74 ?? 45 32 E4", "get_encounter_tbl_data_Sig", address =>

@@ -102,6 +102,25 @@ namespace p5r.enhance.cbt.reloaded
         public delegate void RearrangeBattleOrderDelegate(Package_combat* a2);
         static private IHook<RearrangeBattleOrderDelegate> _hookRearrangeBattleOrder;
 
+        public delegate int GetJyokyoHelpMessageNoDelegate(nint a1, short skillID, nint a3, ushort a4);
+        static private IHook<GetJyokyoHelpMessageNoDelegate> _hookGetJyokyoHelpMessageNo;
+
+        public delegate nint FillSupportFieldsDelegate(nint a1, nint messageScript, int naviID);
+        static private IHook<FillSupportFieldsDelegate> _hookFillSupportFields;
+
+        public unsafe delegate void VoiceUseSkillDelegate(CueIDThingy* a1, nint a2, ushort skillID);
+        static private IHook<VoiceUseSkillDelegate> _hookDarkechiVoiceUseSkill;
+        static private IHook<VoiceUseSkillDelegate> _hookJokerVoiceUseSkill;
+        static private IHook<VoiceUseSkillDelegate> _hookMarukiVoiceUseSkill;
+        static private IHook<VoiceUseSkillDelegate> _hookMakotoVoiceUseSkill;
+        static private IHook<VoiceUseSkillDelegate> _hookYuVoiceUseSkill;
+
+        public unsafe delegate void PartyVoiceUseSkillDelegate(CueIDThingy* a1, nint a2, ushort skillID, byte a4, byte a5);
+        static private IHook<PartyVoiceUseSkillDelegate> _hookPartyVoiceUseSkill;
+
+        public unsafe delegate void JokerVoiceSayPersonaNameDelegate(CueIDThingy* a1, nint a2);
+        static private IHook<JokerVoiceSayPersonaNameDelegate> _hookJokerVoiceSayPersonaName;
+
         public delegate int CheckFutabaUltimateSupportUseDelegate(nint a1, nint a2, nint a3);
         static private IHook<CheckFutabaUltimateSupportUseDelegate> _hookCheckFutabaUltimateSupportUse;
 
@@ -152,6 +171,9 @@ namespace p5r.enhance.cbt.reloaded
 
         private static int SKILL_TBL_Section0_EntrySize = 8;  // 0x08
         private static int SKILL_TBL_Section1_EntrySize = 48; // 0x30
+
+        // SET_SKILL_VOICELINE: unit -> cue to play on that unit's next skill
+        private static readonly ConcurrentDictionary<nint, int> _pendingSkillVoicelines = new();
 
         private static nint EnemyAnalyzeIDsAddress = 0;
         private nint fontSelectStringAddr = 0;
@@ -372,6 +394,66 @@ namespace p5r.enhance.cbt.reloaded
                     _hookCheckFutabaUltimateSupportUse = _hooks.CreateHook<CheckFutabaUltimateSupportUseDelegate>(CheckFutabaUltimateSupportUse, address).Activate();
                 });
             }
+
+            // v1.0.1 = 0x1408f31a0
+            // v1.0.4 = 0x1408db1d0
+            SigScan("48 89 5C 24 ?? 66 89 54 24 ?? 48 89 4C 24 ?? 55 56 57 41 54 41 55 41 56 41 57 48 8B EC", "GetJyokyoHelpMessageNo_Sig", address =>
+            {
+                _hookGetJyokyoHelpMessageNo = _hooks.CreateHook<GetJyokyoHelpMessageNoDelegate>(GetJyokyoHelpMessageNo, address).Activate();
+            });
+
+            // v1.0.1 = 0x140b75270
+            // v1.0.4 = 0x140b37b10
+            SigScan("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 41 56 48 83 EC 20 45 33 F6 48 8D 05 ?? ?? ?? ?? 48 89 01", "fillSupportFields_Sig", address =>
+            {
+                _hookFillSupportFields = _hooks.CreateHook<FillSupportFieldsDelegate>(FillSupportFields, address).Activate();
+            });
+
+            // v1.0.1 = 0x140101ff0
+            // v1.0.4 = 0x1400b9de0
+            SigScan("45 0F B7 C8 4C 8B D1 41 81 F9 F3 00 00 00", "darkechi_combatvoice_useskill_Sig", address =>
+            {
+                _hookDarkechiVoiceUseSkill = _hooks.CreateHook<VoiceUseSkillDelegate>(DarkechiVoiceUseSkill, address).Activate();
+            });
+
+            // v1.0.1 = 0x1400f9f70
+            // v1.0.4 = 0x1400b2cd0
+            SigScan("48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 41 54 41 56 48 83 EC 20 48 8B 41 ??", "party_use_skill_Sig", address =>
+            {
+                _hookPartyVoiceUseSkill = _hooks.CreateHook<PartyVoiceUseSkillDelegate>(PartyVoiceUseSkill, address).Activate();
+            });
+
+            // v1.0.1 = 0x1408f92de
+            // v1.0.4 vtable = 0x141994210
+            SigScan("48 8D 05 ?? ?? ?? ?? 66 45 89 66 ??", "joker_combatvoice_vtable_Sig", address =>
+            {
+                _hookJokerVoiceUseSkill = _hooks.CreateHook<VoiceUseSkillDelegate>(JokerVoiceUseSkill, MergeUseSkillSlots(address)).Activate();
+            });
+
+            // v1.0.0 = 0x1408fb2f9
+            SigScan("48 8D 05 ?? ?? ?? ?? 48 89 07 EB ?? 49 8B FC 48 8D 4F ?? 48 8D 54 24 ?? E8 ?? ?? ?? ?? 41 B9 F6 01 01 00", "maruki_combatvoice_vtable_Sig", address =>
+            {
+                _hookMarukiVoiceUseSkill = _hooks.CreateHook<VoiceUseSkillDelegate>(MarukiVoiceUseSkill, MergeUseSkillSlots(address)).Activate();
+            });
+
+            // v1.0.4 = 0x140b5ce9a
+            SigScan("48 8D 05 ?? ?? ?? ?? 48 89 03 EB ?? 33 DB 48 8D 4B ?? 48 8B D7 E8 ?? ?? ?? ?? 41 B8 E8 02 00 00", "makoto_combatvoice_vtable_Sig", address =>
+            {
+                _hookMakotoVoiceUseSkill = _hooks.CreateHook<VoiceUseSkillDelegate>(MakotoVoiceUseSkill, MergeUseSkillSlots(address)).Activate();
+            });
+
+            // v1.0.4 = 0x140b5cf5a
+            SigScan("48 8D 05 ?? ?? ?? ?? 48 89 03 EB ?? 33 DB 48 8D 4B ?? 48 8B D7 E8 ?? ?? ?? ?? 41 B8 E9 02 00 00", "yu_combatvoice_vtable_Sig", address =>
+            {
+                _hookYuVoiceUseSkill = _hooks.CreateHook<VoiceUseSkillDelegate>(YuVoiceUseSkill, MergeUseSkillSlots(address)).Activate();
+            });
+
+            // v1.0.1 = 0x1400f94b0
+            // v1.0.4 = 0x1400b2220
+            SigScan("48 89 5C 24 ?? 57 48 83 EC 20 0F B7 05 ?? ?? ?? ?? 4C 8D 0D ?? ?? ?? ??", "joker_combatvoice_saypersonaname_Sig", address =>
+            {
+                _hookJokerVoiceSayPersonaName = _hooks.CreateHook<JokerVoiceSayPersonaNameDelegate>(JokerVoiceSayPersonaName, address).Activate();
+            });
 
             // v1.0.0 = 0x140934e40
             SigScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 48 89 4C 24 ?? 55 41 54 41 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC A0 00 00 00 45 33 E4", "Rearrange Battle Order", address =>
@@ -695,6 +777,21 @@ namespace p5r.enhance.cbt.reloaded
 
                 return FlowStatus.SUCCESS;
             }, 0x63);
+
+            flowFramework.Register("SET_SKILL_VOICELINE", 1, () =>
+            {
+                LogDebugFunc("SET_SKILL_VOICELINE called");
+
+                int voiceline = flowApi.GetIntArg(0);
+                datUnit* unit = GetDatUnitFromCurrentAI();
+
+                if (voiceline > 0 && unit != null)
+                {
+                    _pendingSkillVoicelines[(nint)unit] = voiceline;
+                }
+
+                return FlowStatus.SUCCESS;
+            }, 0x2160);
 
             flowFramework.Register("CALL_NAVI_DIALOGUE", 3, () =>
             {
@@ -2424,6 +2521,176 @@ namespace p5r.enhance.cbt.reloaded
             a2->Field000 = (int)ByteswapUlong((uint)CombineBytes(_configuration._031_JokerColor_R, _configuration._031_JokerColor_G, _configuration._031_JokerColor_B));
 
             _hookCombineColorBytes.OriginalFunction(a1, a2, a3);
+        }
+
+        public static unsafe int GetJyokyoHelpMessageNo(nint a1, short skillID, nint a3, ushort a4)
+        {
+            LogDebugFunc("GetJyokyoHelpMessageNo called");
+
+            int result = _hookGetJyokyoHelpMessageNo.OriginalFunction(a1, skillID, a3, a4);
+
+            if (skillID <= 0 || SKILL_TBL_Section1_PTR == 0)
+            {
+                return result;
+            }
+
+            var skill = (SkillTBL_ActiveSkill*)(SKILL_TBL_Section1_PTR + skillID * SKILL_TBL_Section1_EntrySize);
+
+            if (skill->datJyokyoHelpID > 0)
+            {
+                LogDebug($"Skill {skillID} using datJyokyoHelp message {skill->datJyokyoHelpID}");
+                result = skill->datJyokyoHelpID;
+            }
+
+            return result;
+        }
+
+        private static readonly string[] GameLanguages = { "EN", "FR", "IT", "DE", "ES", "PT", "RU", "JP", "TC", "SC", "KR" };
+
+        public static unsafe nint FillSupportFields(nint a1, nint messageScript, int naviID)
+        {
+            LogDebugFunc("FillSupportFields called");
+
+            short language = _gameFunctions.GetUserLang();
+
+            if (naviID == 0 || language < 0 || language >= GameLanguages.Length)
+            {
+                return _hookFillSupportFields.OriginalFunction(a1, messageScript, naviID);
+            }
+
+            string naviFile = $"battle/message/{GameLanguages[language]}/navi_{naviID:D2}.bmd";
+            nint filename = Marshal.StringToHGlobalAnsi(naviFile);
+
+            fileHandleStruct* naviMessages = _gameFunctions.file_open_simple((char*)filename)->ptrtoStruct;
+
+            int fileStatus = 0;
+            if (naviMessages != null)
+            {
+                // 0 = still loading, 1 = loaded, -1 = failed
+                do
+                {
+                    fileStatus = _gameFunctions.fsSync(naviMessages);
+                } while (fileStatus == 0);
+            }
+
+            Marshal.FreeHGlobal(filename);
+
+            if (fileStatus != 1)
+            {
+                return _hookFillSupportFields.OriginalFunction(a1, messageScript, naviID);
+            }
+
+            LogDebug($"Loading external navi file {naviFile}");
+
+            return _hookFillSupportFields.OriginalFunction(a1, naviMessages->pointerToFile, naviID);
+        }
+
+        private static unsafe nint MergeUseSkillSlots(nint vtableReference)
+        {
+            var vtable = (CombatVoiceVTable*)GetGlobalAddress(vtableReference + 3);
+            nint useSkill = vtable->UseSkill2;
+
+            Memory.Instance.SafeWrite((nuint)(&vtable->UseSkill), BitConverter.GetBytes((long)useSkill));
+            return useSkill;
+        }
+
+        private static unsafe bool TryPlaySkillVoiceline(CueIDThingy* a1, nint a2)
+        {
+            if (!_pendingSkillVoicelines.TryRemove((nint)a1->PointerToStruct->datUnitPtr, out int voiceline))
+            {
+                return false;
+            }
+
+            LogDebug($"Playing custom skill voiceline {voiceline}");
+
+            _gameFunctions.LoadSoundByCueIDCombatVoice((nint)a1, a2, voiceline, 0);
+            return true;
+        }
+
+        public static unsafe void DarkechiVoiceUseSkill(CueIDThingy* a1, nint a2, ushort skillID)
+        {
+            LogDebugFunc("DarkechiVoiceUseSkill called");
+
+            if (!TryPlaySkillVoiceline(a1, a2))
+            {
+                _hookDarkechiVoiceUseSkill.OriginalFunction(a1, a2, skillID);
+            }
+        }
+
+        public static unsafe void PartyVoiceUseSkill(CueIDThingy* a1, nint a2, ushort skillID, byte a4, byte a5)
+        {
+            LogDebugFunc("PartyVoiceUseSkill called");
+
+            if (!TryPlaySkillVoiceline(a1, a2))
+            {
+                _hookPartyVoiceUseSkill.OriginalFunction(a1, a2, skillID, a4, a5);
+            }
+        }
+
+        public static unsafe void JokerVoiceUseSkill(CueIDThingy* a1, nint a2, ushort skillID)
+        {
+            LogDebugFunc("JokerVoiceUseSkill called");
+
+            if (!TryPlaySkillVoiceline(a1, a2))
+            {
+                _hookJokerVoiceUseSkill.OriginalFunction(a1, a2, skillID);
+            }
+        }
+
+        public static unsafe void MarukiVoiceUseSkill(CueIDThingy* a1, nint a2, ushort skillID)
+        {
+            LogDebugFunc("MarukiVoiceUseSkill called");
+
+            if (TryPlaySkillVoiceline(a1, a2))
+            {
+                return;
+            }
+
+            uint unitID = a1->PointerToStruct->datUnitPtr->unitID;
+
+            if (unitID == 0x1F6 || unitID == 0x1F7)
+            {
+                _hookMarukiVoiceUseSkill.OriginalFunction(a1, a2, skillID);
+            }
+            else
+            {
+                // custom bosses use this voice type, give them a default line
+                _gameFunctions.LoadSoundByCueIDCombatVoice((nint)a1, a2, _gameFunctions.RandomIntBetween(2, 5), 0);
+            }
+        }
+
+        public static unsafe void MakotoVoiceUseSkill(CueIDThingy* a1, nint a2, ushort skillID)
+        {
+            LogDebugFunc("MakotoVoiceUseSkill called");
+
+            if (!TryPlaySkillVoiceline(a1, a2))
+            {
+                _hookMakotoVoiceUseSkill.OriginalFunction(a1, a2, skillID);
+            }
+        }
+
+        public static unsafe void YuVoiceUseSkill(CueIDThingy* a1, nint a2, ushort skillID)
+        {
+            LogDebugFunc("YuVoiceUseSkill called");
+
+            if (!TryPlaySkillVoiceline(a1, a2))
+            {
+                _hookYuVoiceUseSkill.OriginalFunction(a1, a2, skillID);
+            }
+        }
+
+        public static unsafe void JokerVoiceSayPersonaName(CueIDThingy* a1, nint a2)
+        {
+            LogDebugFunc("JokerVoiceSayPersonaName called");
+
+            if (_gameFunctions.RandomIntBetween(0, 100) > 30)
+            {
+                _hookJokerVoiceSayPersonaName.OriginalFunction(a1, a2);
+            }
+            else
+            {
+                _gameFunctions.LoadSoundByCueIDCombatVoice((nint)a1, a2, 213, 0); // "Persona Change!"
+            }
         }
 
         public unsafe bool AreBattleUnitsDead(Participate* a1)
